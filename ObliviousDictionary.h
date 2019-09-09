@@ -15,6 +15,7 @@
 #include <NTL/GF2E.h>
 #include <NTL/GF2X.h>
 #include <NTL/GF2XFactoring.h>
+#include "gf2e_mat_solve.h"
 
 #include <chrono>
 class Tools;
@@ -22,6 +23,7 @@ class Tools;
 using namespace std::chrono;
 
 using namespace std;
+
 
 class ObliviousDictionary {
 protected:
@@ -40,7 +42,8 @@ protected:
 
     Hasher DH;
 
-    vector<uint64_t> variables;
+    GF2EVector variables;
+    vector<byte> sign;
 
     Tools* tool;
 
@@ -51,6 +54,7 @@ public:
 
     ObliviousDictionary(int hashSize) : hashSize(hashSize){
         gamma = 60;
+        initField();
     }
 //    virtual ~ObliviousDictionary(){
 //        delete tool;
@@ -62,7 +66,7 @@ public:
 
 class ObliviousDictionaryDB : public ObliviousDictionary{
 protected:
-    unordered_map<uint64_t, uint64_t> vals;
+    unordered_map<uint64_t, GF2E> vals;
 
     vector<uint64_t> peelingVector;
     int peelingCounter;

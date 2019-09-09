@@ -62,23 +62,37 @@ void ProtocolParty::run() {
 
 }
 
-DBParty::DBParty(int argc, char *argv[]): ProtocolParty(argc, argv){
+Receiver::Receiver(int argc, char *argv[]): ProtocolParty(argc, argv){
 
-    auto version = this->getParser().getValueByKey(arguments, "version");
-
-    if (version.compare("2Tables") == 0) {
-        dic = new ObliviousDictionaryDB(hashSize);
-    }
+    dic = new ObliviousDictionaryDB(hashSize);
     dic->setReportStatstics(reportStatistics);
 
 }
 
-DBParty::~DBParty(){
+Receiver::~Receiver(){
     delete dic;
 }
 
-void DBParty::runOnline() {
+void Receiver::runOnline() {
 
+    auto start = high_resolution_clock::now();
+    auto t1 = high_resolution_clock::now();
+
+    createDictionary();
+    auto t2 = high_resolution_clock::now();
+
+    auto duration = duration_cast<milliseconds>(t2-t1).count();
+    cout << "createDictionary took in milliseconds: " << duration << endl;
+
+
+    auto end = high_resolution_clock::now();
+
+    duration = duration_cast<milliseconds>(end - start).count();
+    cout << "all protocol took in milliseconds: " << duration << endl;
+
+}
+
+void Receiver::createDictionary(){
     dic->init();
 
     auto start = high_resolution_clock::now();
@@ -103,7 +117,7 @@ void DBParty::runOnline() {
     t2 = high_resolution_clock::now();
 
     duration = duration_cast<milliseconds>(t2-t1).count();
-    cout << "calcPolinomial took in milliseconds: " << duration << endl;
+    cout << "calc equations took in milliseconds: " << duration << endl;
 
     if(reportStatistics==0) {
         t1 = high_resolution_clock::now();
@@ -114,14 +128,6 @@ void DBParty::runOnline() {
         duration = duration_cast<milliseconds>(t2 - t1).count();
         cout << "unpeeling took in milliseconds: " << duration << endl;
 
-        t1 = high_resolution_clock::now();
-//        dic->sendData(otherParty);
-
-        t2 = high_resolution_clock::now();
-
-        duration = duration_cast<milliseconds>(t2 - t1).count();
-        cout << "send took in milliseconds: " << duration << endl;
-
         auto end = high_resolution_clock::now();
 
         duration = duration_cast<milliseconds>(end - start).count();
@@ -129,37 +135,32 @@ void DBParty::runOnline() {
 
         dic->checkOutput();
     }
+}
+
+Sender::Sender(int argc, char *argv[]) : ProtocolParty(argc, argv){
+
 
 }
 
-QueryParty::QueryParty(int argc, char *argv[]) : ProtocolParty(argc, argv){
+Sender::~Sender() {
 
-    auto version = this->getParser().getValueByKey(arguments, "version");
-
-    if (version.compare("2Tables") == 0) {
-        dic = new ObliviousDictionaryQuery(hashSize);
-    }
-}
-
-QueryParty::~QueryParty() {
-    delete dic;
 }
 
 
 
-void QueryParty::runOnline() {
+void Sender::runOnline() {
 
     auto start = high_resolution_clock::now();
     auto t1 = high_resolution_clock::now();
 
-    dic->readData(otherParty);
+//    dic->readData(otherParty);
     auto t2 = high_resolution_clock::now();
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
     cout << "read data took in milliseconds: " << duration << endl;
 
     t1 = high_resolution_clock::now();
-    dic->calcRealValues();
+//    dic->calcRealValues();
     t2 = high_resolution_clock::now();
 
     duration = duration_cast<milliseconds>(t2-t1).count();

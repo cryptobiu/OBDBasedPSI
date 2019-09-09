@@ -36,8 +36,8 @@ vector<uint64_t> ObliviousDictionary::dec(uint64_t key){
     for (int j=0; j<gamma; j++){
         if ((dhBits & mask) == 1){
             indices.push_back(j); //put 1 in the right vertex of the edge
-            dhBits >> 1;
         }
+        dhBits = dhBits >> 1;
     }
 
     return indices;
@@ -58,9 +58,14 @@ void ObliviousDictionaryDB::init() {
     keys.resize(hashSize);
     vals.reserve(hashSize);
 
+    uint64_t randomVal;
+    GF2X temp;
+
     for (int i=0; i < hashSize; i++){
-        keys[i] = prg.getRandom64() >> 3;
-        vals.insert({keys[i], prg.getRandom64() >> 3});
+        keys[i] = prg.getRandom64();
+        randomVal = prg.getRandom64();
+        GF2XFromBytes(temp, (byte*)&randomVal ,8);
+        vals.insert({keys[i], to_GF2E(temp)});
     }
 
     int numKeysToCheck = 10;
@@ -110,8 +115,8 @@ ObliviousDictionaryDB::ObliviousDictionaryDB(int size) : ObliviousDictionary(siz
 
 //    firstEncValues.resize(tableRealSize, 0);
 //    secondEncValues.resize(tableRealSize, 0);
-    variables.resize(2*tableRealSize + gamma, 0);
-
+    variables.resize(2*tableRealSize + gamma);
+    sign.resize(2*tableRealSize, 0);
 //    keys.resize(hashSize);
 //    vals.reserve(hashSize);
 //
@@ -235,27 +240,34 @@ void ObliviousDictionaryDB::peeling(){
 
 void ObliviousDictionaryDB::generateExternalToolValues(){
 
-    int matrixSize = first.size()*(2*tableRealSize+gamma); // the rows count is the number of edges left after peeling
+//    int matrixSize = first.size()*(2*tableRealSize+gamma); // the rows count is the number of edges left after peeling
                                                         //columns count is number of vertexes and gamma bits.
 
 //    byte* matrix = new byte(matrixSize);
 //    memset(matrix, 0, matrixSize);
 //    byte* values = new byte(first.size());
 
-    GF2X irreduciblePolynomial = BuildSparseIrred_GF2X(8);
-    GF2E::init(irreduciblePolynomial);
+    GF2EMatrix matrix(first.size());
 
-    Mat<GF2E> matrix;
-    matrix.SetDims(first.size(), 2*tableRealSize+gamma);
-    Vec<GF2E> values;
-    values.SetLength(first.size());
+    cout<<"num of rows = "<<first.size()<<endl;
+    cout<<"num of cols = "<<2*tableRealSize+gamma<<endl;
+    for(size_t i = 0; i < first.size(); ++i) {
+        matrix[i].resize(2*tableRealSize+gamma);
+        for(size_t j = 0; j < 2*tableRealSize+gamma; ++j) {
+            matrix[i][j] = to_GF2E(0);
+        }
+    }
+    GF2EVector values(first.size());
 
-    GF2X temp;
-    byte oneb = 1;
-    GF2X one;
-    GF2XFromBytes(one, &oneb,1);
-    byte dhBit;
-
+//    cout<<"matrix:"<<endl;
+//    for (int i=0; i<first.size(); i++){
+//        for (int j=0; j<2*tableRealSize+gamma; j++){
+//            cout<<matrix[i][j]<<" ";
+//        }
+//        cout<<endl;
+//    }
+//    GF2X irreduciblePolynomial = BuildSparseIrred_GF2X(132);
+//    GF2E::init(irreduciblePolynomial);
     //Get all the edges that are in the graph's circles and calc the polynomial values that should be for them.
     int edgesCounter = 0;
     for (int i=0; i<tableRealSize; i++){
@@ -264,26 +276,37 @@ void ObliviousDictionaryDB::generateExternalToolValues(){
 //                matrix[edgesCounter*(2*tableRealSize+60) + i] = 1; //put 1 in the left vertex of the edge
 //                matrix[edgesCounter*(2*tableRealSize+60) + tableRealSize + second.bucket(*key)] = 1; //put 1 in the right vertex of the edge
 
-                matrix[edgesCounter][i] = to_GF2E(one); //put 1 in the left vertex of the edge
-                matrix[edgesCounter][tableRealSize + second.bucket(*key)] = to_GF2E(one); //put 1 in the right vertex of the edge
-
+                auto secondPosition = second.bucket(*key);
+                matrix[edgesCounter][i] = to_GF2E(1); //put 1 in the left vertex of the edge
+                matrix[edgesCounter][tableRealSize + secondPosition] = to_GF2E(1); //put 1 in the right vertex of the edge
+                sign[i] = 1;
+                sign[tableRealSize + secondPosition] = 1;
                 auto dhBits = getDHBits(*key);
+//                cout<<"DH bits: "<<dhBits<<endl;
                 uint64_t mask = 1;
                 for (int j=0; j<gamma; j++){
-                    dhBit = dhBits & mask;
 //                    matrix[edgesCounter*(2*tableRealSize+60) + 2*tableRealSize + j] = dhBIts & mask; //put 1 in the right vertex of the edge
-                    GF2XFromBytes(temp, &dhBit, 1);
-                    matrix[edgesCounter][ 2*tableRealSize + j] = to_GF2E(temp); //put 1 in the right vertex of the edge
-                    dhBits >> 1;
+//                    cout<<(dhBits & mask)<<" ";
+                    matrix[edgesCounter][ 2*tableRealSize + j] = to_GF2E(dhBits & mask); //put 1 in the right vertex of the edge
+//                    matrix[edgesCounter][ 2*tableRealSize + j] = to_GF2E(1); //put 1 in the right vertex of the edge
+                    dhBits = dhBits >> 1;
 
                 }
-                GF2XFromBytes(temp, (byte*)&(vals[*key]) ,1);
-                values[edgesCounter] =to_GF2E(temp);
+//                cout<<endl;
+                values[edgesCounter] = vals[*key];
                 edgesCounter++;
 
             }
         }
     }
+
+//    cout<<"matrix:"<<endl;
+//    for (int i=0; i<first.size(); i++){
+//        for (int j=0; j<2*tableRealSize+gamma; j++){
+//            cout<<matrix[i][j]<<" ";
+//        }
+//        cout<<endl;
+//    }
 
     cout<<"num of equations =  "<<edgesCounter<<endl;
 
@@ -293,62 +316,41 @@ void ObliviousDictionaryDB::generateExternalToolValues(){
     }
 
     //TODO call the solver and get the results in variables
-    GF2E d;
-    Vec<GF2E> x;
-    x.SetLength(2*tableRealSize+gamma);
-    solve(d, matrix, x, values);
+    solve_api(matrix, values, variables);
 
-
-//    delete [] matrix;
-//    delete [] values;
-//    int polySize = 5*log2(hashSize);
-//    vector<uint64_t> edgesForPolynomial(polySize);
-//    vector<uint64_t> valuesForPolynomial(polySize);
-//
-//    //Assign random values to all vertex in the circles.
 //    for (int i=0; i<tableRealSize; i++){
 //        if (first.bucket_size(i) > 1){
-//            firstEncValues[i] =  prg.getRandom64() >> 3;
-////                cout<<"bucket "<<i<<" got random value in first"<<endl;
-//        }
-//        if (second.bucket_size(i) > 1) {
-//            secondEncValues[i] = prg.getRandom64()  >> 3;
-////                cout<<"bucket "<<i<<" got random value in second"<<endl;
-//        }
-//    }
-//
-//    //Get all the edges that are in the graph's circles and calc the polynomial values that should be for them.
-//    int polyCounter = 0;
-//    for (int i=0; i<tableRealSize; i++){
-//        if (first.bucket_size(i) > 1){
+//            cout<<"in check loop"<<endl;
 //            for (auto key = first.begin(i); key!= first.end(i); ++key){
-//                edgesForPolynomial[polyCounter] = *key;
-//                valuesForPolynomial[polyCounter] = firstEncValues[i] ^ secondEncValues[second.bucket(*key)] ^ vals[*key];
-//                polyCounter++;
+////                matrix[edgesCounter*(2*tableRealSize+60) + i] = 1; //put 1 in the left vertex of the edge
+////                matrix[edgesCounter*(2*tableRealSize+60) + tableRealSize + second.bucket(*key)] = 1; //put 1 in the right vertex of the edge
+//
+//                auto val = variables[i] + variables[tableRealSize + second.bucket(*key)] ;
+//                auto dhBits = getDHBits(*key);
+//                uint64_t mask = 1;
+//                for (int j=0; j<gamma; j++){
+////                    matrix[edgesCounter*(2*tableRealSize+60) + 2*tableRealSize + j] = dhBIts & mask; //put 1 in the right vertex of the edge
+//                    if (dhBits & mask)
+//                        val +=variables[ 2*tableRealSize + j];
+//                    dhBits = dhBits >> 1;
+//
+//                }
+//
+//                if (val != vals[*key]){
+//                    cout<<"wrong value!!"<<endl;
+//                } else{
+//                    cout<<"correct!!"<<endl;
+//                }
+//                edgesCounter++;
+//
 //            }
 //        }
-//    }
-//
-//    cout<<"circles size =  "<<polyCounter<<endl;
-//
-//    if(reportStatistics==1) {
-//
-//        statisticsFile << polyCounter << ", \n";
+
+//    cout<<"variables:"<<endl;
+//    for (int i=0; i<variables.size(); i++){
+//        cout<<"variable["<<i<<"] = "<<variables[i]<<endl;
 //    }
 
-
-//if (polyCounter < polySize){
-//        for (int i=polyCounter; i<polySize; i++){
-//            edgesForPolynomial[polyCounter] = peelingVector[i];
-//            valuesForPolynomial[polyCounter] = prg.getRandom64() >> 3;
-//            polyCounter++;
-//        }
-//    } else if (polyCounter > polySize){
-//        cout<<"error!!! circles size is bigger than polynomial size"<<endl;
-//    }
-//
-//
-//    tool->generateToolValues(edgesForPolynomial, valuesForPolynomial);
 }
 
 
@@ -356,7 +358,10 @@ void ObliviousDictionaryDB::generateExternalToolValues(){
 
 void ObliviousDictionaryDB::unpeeling(){
     cout<<"in unpeeling"<<endl;
-    uint64_t firstPosition, secondPosition, dhBitsVal, key;
+    uint64_t key, randomVal;
+    GF2E dhBitsVal;
+    GF2X temp;
+
 //    vector<uint64_t> polyVals(peelingCounter);
 //    Poly::evalMersenneMultipoint(polyVals, polynomial, peelingVector);
 
@@ -364,32 +369,59 @@ void ObliviousDictionaryDB::unpeeling(){
 //            cout<<"key = "<<key<<endl;
         key = peelingVector[--peelingCounter];
         auto indices = dec(key);
-
+//cout<<"indices = "<<endl;
+//for (int i=0; i<indices.size(); i++){
+//    cout<<indices[i]<<" ";
+//}
+//cout<<endl;
         dhBitsVal = 0;
         for (int j=2; j<indices.size(); j++){
-            dhBitsVal ^= variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+//            if (variables[2*tableRealSize+ indices[j]] == 0){
+//                randomVal = prg.getRandom64()  >> 3;
+//                GF2XFromBytes(temp, (byte*)&randomVal ,8);
+//                variables[2*tableRealSize+ indices[j]] = to_GF2E(temp);
+//            }
+            dhBitsVal += variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
 
+//            cout<<"variable in "<<indices[j]<<" place = "<<variables[2*tableRealSize+ indices[j]]<<endl;
         }
 //        Poly::evalMersenne((ZpMersenneLongElement*)&poliVal, polynomial, (ZpMersenneLongElement*)&key);
 //        poliVal = polyVals[peelingCounter];
-        if (variables[indices[0]] == 0 && variables[tableRealSize + indices[1]] == 0){
-            variables[indices[1]] = prg.getRandom64()  >> 3;
-//                cout<<"set RANDOM value to first in bucket "<<firstPosition<<endl;
+        if (variables[indices[0]] == 0 && variables[tableRealSize + indices[1]] == 0 && sign[indices[0]] == 0 && sign[tableRealSize + indices[1]] == 0){
+            randomVal = prg.getRandom64();
+            GF2XFromBytes(temp, (byte*)&randomVal ,8);
+            variables[indices[0]] = to_GF2E(temp);
+//                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
         }
-        if (variables[indices[0]] == 0){
-            variables[indices[0]] = vals[key] ^ variables[tableRealSize + indices[1]] ^ dhBitsVal;
-//                cout<<"set value to first in bucket "<<firstPosition<<endl;
-        } else {
-            variables[tableRealSize + indices[1]] = vals[key] ^ variables[indices[0]] ^ dhBitsVal;
-//                cout<<"set value to second in bucket "<<secondPosition<<endl;
+        if (variables[indices[0]] == 0 && sign[indices[0]] == 0){
+            variables[indices[0]] = vals[key] + variables[tableRealSize + indices[1]] + dhBitsVal;
+//                cout<<"set value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
+//            cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
+//            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
+//            cout<<"dhBitsVal = "<<dhBitsVal<<endl;
+//            cout<<"val = "<<vals[key]<<endl;
+        } if (variables[tableRealSize + indices[1]] == 0 && sign[tableRealSize + indices[1]] == 0){
+            variables[tableRealSize + indices[1]] = vals[key] + variables[indices[0]] + dhBitsVal;
+//                cout<<"set value "<<variables[tableRealSize + indices[1]]<<" index "<<tableRealSize + indices[1]<<endl;
+//            cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
+//            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
+//            cout<<"dhBitsVal = "<<dhBitsVal<<endl;
+//            cout<<"val = "<<vals[key]<<endl;
         }
     }
     cout<<"peelingCounter = "<<peelingCounter<<endl;
+
+//    cout<<"variables:"<<endl;
+//    for (int i=0; i<variables.size(); i++){
+//        cout<<"variable["<<i<<"] = "<<variables[i]<<" ";
+//    }
+//    cout<<endl;
 }
 
 void ObliviousDictionaryDB::checkOutput(){
 
-    uint64_t key, val, dhBitsVal;
+    uint64_t key;
+    GF2E val, dhBitsVal;
 
     for (int i=0; i<hashSize; i++){
         key = keys[i];
@@ -399,17 +431,17 @@ void ObliviousDictionaryDB::checkOutput(){
 
         dhBitsVal = 0;
         for (int j=2; j<indices.size(); j++){
-            dhBitsVal ^= variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+            dhBitsVal += variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
 
         }
 
-        if ((variables[indices[0]] ^ variables[indices[1]] ^ dhBitsVal) == val) {
+        if ((variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal) == val) {
             if (i%100000 == 0)
                 cout<<"good value!!! val = "<<val<<endl;
         } else {//if (!hasLoop()){
-            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] ^ variables[indices[1]] ^ dhBitsVal)<<endl;
-            cout<<"firstEncValues["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
-            cout<<"secondEncValues["<<indices[1]<<"] = "<<variables[indices[1]]<<endl;
+            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal)<<endl;
+            cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
+            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
             cout<<"dhBitsVal = "<<dhBitsVal<<endl;
         }
 
@@ -464,7 +496,7 @@ void ObliviousDictionaryQuery::readData(shared_ptr<ProtocolPartyData> otherParty
         keys[i] = tmpKeys[i];//prg.getRandom32() % hashSize;
     }
 
-    variables.resize(tableRealSize*2 + gamma, 0);
+    variables.resize(tableRealSize*2 + gamma);
 //TODO until here
 
     otherParty->getChannel()->read((byte*)variables.data(), variables.size()*8);
@@ -473,19 +505,19 @@ void ObliviousDictionaryQuery::readData(shared_ptr<ProtocolPartyData> otherParty
 void ObliviousDictionaryQuery::calcRealValues(){
 
     cout<<"vals:"<<endl;
-    uint64_t dhBitsVal;
+    GF2E dhBitsVal;
     int size = keys.size();
-    vector<uint64_t> vals(size);
+    vector<GF2E> vals(size);
     for (int i=0; i<size; i++){
 
         auto indices = dec(keys[i]);
 
         dhBitsVal = 0;
         for (int j=2; j<indices.size(); j++){
-            dhBitsVal ^= variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+            dhBitsVal *= variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
 
         }
-        vals[i] = variables[indices[0]] ^ variables[indices[1]] ^ dhBitsVal;
+        vals[i] = variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal;
         cout<<"key = "<<keys[i]<<" val = "<<vals[i]<<endl;
     }
 

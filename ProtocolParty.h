@@ -45,24 +45,25 @@ public:
 
 };
 
-class DBParty : public ProtocolParty {
+class Receiver : public ProtocolParty {
 private :
     ObliviousDictionaryDB* dic;
+
+    void createDictionary();
 public:
 
-    DBParty(int argc, char *argv[]);
-    ~DBParty();
+    Receiver(int argc, char *argv[]);
+    ~Receiver();
 
     void runOnline() override;
 };
 
-class QueryParty : public ProtocolParty {
+class Sender : public ProtocolParty {
 private :
-    ObliviousDictionaryQuery* dic;
 public:
 
-    QueryParty(int argc, char *argv[]);
-    ~QueryParty();
+    Sender(int argc, char *argv[]);
+    ~Sender();
     void runOnline() override;
 
 

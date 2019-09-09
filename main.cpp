@@ -5,6 +5,42 @@
 
 int main(int argc, char* argv[]) {
 
+//    srand(25);
+//    initField();
+//    GF2EMatrix A(20);
+//    for(size_t i = 0; i < 20; ++i) {
+//        A[i].resize(20);
+//        for(size_t j = 0; j < 20; ++j) {
+//            A[i][j] = NTL::to_GF2E((i == j)? 1: 0);
+//        }
+//    }
+//
+//    GF2EVector B(20);
+//    GF2X temp;
+//    for(size_t i = 0; i < 20; ++i) {
+//        auto r = rand();
+//
+//        GF2XFromBytes(temp, (byte*)&r ,4);
+//        B[i] = NTL::to_GF2E(temp);
+//    }
+//
+//    GF2EVector X;
+//    int err = 0;
+//    if(0 == (err = solve_api(A, B, X))) {
+//        cout << "solve API success" << endl;
+//        bool match = true;
+//        for(size_t i = 0; i < 20; ++i) {
+//            if(B[i] != X[i]) {
+//                cout << "X : B mismatch @" << i << endl;
+//                match = false;
+//            }
+//        }
+//        if(match) {
+//            cout << "X and B match." << endl;
+//        }
+//    } else {
+//        cout << "solve API failure: " << err << endl;
+//    }
 //    GF2X irreduciblePolynomial = BuildSparseIrred_GF2X(132);
 //    GF2E::init(irreduciblePolynomial);
 //
@@ -87,10 +123,10 @@ int main(int argc, char* argv[]) {
     int partyID = stoi(parser.getValueByKey(parameters, "partyID"));
 
     if (partyID == 0) {
-        DBParty dic(argc, argv);
+        Receiver dic(argc, argv);
         dic.run();
     } else {
-        QueryParty dic(argc, argv);
+        Sender dic(argc, argv);
         dic.run();
     }
 }

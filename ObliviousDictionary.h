@@ -35,7 +35,15 @@ protected:
     PrgFromOpenSSLAES prg;
     vector<uint64_t> keys;
 
-    uint64_t firstSeed, secondSeed, dhSeed;;
+    uint64_t firstSeed, secondSeed, dhSeed;
+
+    unordered_map<uint64_t, GF2E> vals;
+
+    vector<uint64_t> peelingVector;
+    int peelingCounter;
+
+    int reportStatistics=0;
+    ofstream statisticsFile;
 
     unordered_set<uint64_t, Hasher> first;
     unordered_set<uint64_t, Hasher> second;
@@ -45,44 +53,21 @@ protected:
     GF2EVector variables;
     vector<byte> sign;
 
-    Tools* tool;
-
     vector<uint64_t> dec(uint64_t key);
     uint64_t getDHBits(uint64_t key);
 
 public:
 
-    ObliviousDictionary(int hashSize) : hashSize(hashSize){
-        gamma = 60;
-        initField();
+    ObliviousDictionary(int hashSize);
+
+     ~ObliviousDictionary(){
+         if (reportStatistics == 1) {
+
+             statisticsFile.close();
+         }
     }
-//    virtual ~ObliviousDictionary(){
-//        delete tool;
-//    }
 
     void createSets();
-};
-
-
-class ObliviousDictionaryDB : public ObliviousDictionary{
-protected:
-    unordered_map<uint64_t, GF2E> vals;
-
-    vector<uint64_t> peelingVector;
-    int peelingCounter;
-    int reportStatistics=0;
-    ofstream statisticsFile;
-
-public:
-
-    ObliviousDictionaryDB(int hashSize);
-
-    virtual ~ObliviousDictionaryDB() {
-        if (reportStatistics == 1) {
-
-            statisticsFile.close();
-        }
-    };
 
     void fillTables();
 
@@ -96,8 +81,6 @@ public:
 
     bool hasLoop();
 
-    void sendData(shared_ptr<ProtocolPartyData> otherParty);
-
     void setReportStatstics(int flag){
         reportStatistics = flag;
         if (reportStatistics == 1) {
@@ -108,22 +91,10 @@ public:
         }};
 
     void init();
+
+    GF2EVector getVariables() { return variables; }
 };
 
-class ObliviousDictionaryQuery : public ObliviousDictionary{
-private:
-
-
-public:
-
-    ObliviousDictionaryQuery(int hashSize);
-
-    virtual void readData(shared_ptr<ProtocolPartyData> otherParty);
-
-    virtual void calcRealValues();
-
-    virtual void output();
-};
 
 
 #endif //BENNYPROJECT_OBLIVIOUSDICTIONARY_H

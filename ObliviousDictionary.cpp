@@ -48,7 +48,7 @@ uint64_t ObliviousDictionary::getDHBits(uint64_t key){
     return bits >> (64-gamma);
 }
 
-void ObliviousDictionaryDB::init() {
+void ObliviousDictionary::init() {
 
     vals.clear();
     keys.clear();
@@ -79,7 +79,10 @@ void ObliviousDictionaryDB::init() {
 }
 
 
-ObliviousDictionaryDB::ObliviousDictionaryDB(int size) : ObliviousDictionary(size) {
+ObliviousDictionary::ObliviousDictionary(int hashSize) : hashSize(hashSize) {
+
+    gamma = 60;
+    initField();
 
     auto key = prg.generateKey(128);
     prg.setKey(key);
@@ -135,7 +138,7 @@ ObliviousDictionaryDB::ObliviousDictionaryDB(int size) : ObliviousDictionary(siz
 
 }
 
-void ObliviousDictionaryDB::fillTables(){
+void ObliviousDictionary::fillTables(){
 
     for (int i=0; i<hashSize; i++){
 
@@ -155,7 +158,7 @@ void ObliviousDictionaryDB::fillTables(){
 
 }
 
-void ObliviousDictionaryDB::peeling(){
+void ObliviousDictionary::peeling(){
 
     peelingVector.resize(hashSize);
     peelingCounter = 0;
@@ -238,7 +241,7 @@ void ObliviousDictionaryDB::peeling(){
 
 }
 
-void ObliviousDictionaryDB::generateExternalToolValues(){
+void ObliviousDictionary::generateExternalToolValues(){
 
 //    int matrixSize = first.size()*(2*tableRealSize+gamma); // the rows count is the number of edges left after peeling
                                                         //columns count is number of vertexes and gamma bits.
@@ -356,7 +359,7 @@ void ObliviousDictionaryDB::generateExternalToolValues(){
 
 
 
-void ObliviousDictionaryDB::unpeeling(){
+void ObliviousDictionary::unpeeling(){
     cout<<"in unpeeling"<<endl;
     uint64_t key, randomVal;
     GF2E dhBitsVal;
@@ -418,7 +421,7 @@ void ObliviousDictionaryDB::unpeeling(){
 //    cout<<endl;
 }
 
-void ObliviousDictionaryDB::checkOutput(){
+void ObliviousDictionary::checkOutput(){
 
     uint64_t key;
     GF2E val, dhBitsVal;
@@ -448,7 +451,7 @@ void ObliviousDictionaryDB::checkOutput(){
     }
 }
 
-bool ObliviousDictionaryDB::hasLoop(){
+bool ObliviousDictionary::hasLoop(){
     for (int position = 0; position<tableRealSize; position++) {
         if (first.bucket_size(position) > 1) {
             return true;
@@ -456,74 +459,3 @@ bool ObliviousDictionaryDB::hasLoop(){
     }
     return false;
 }
-
-
-void ObliviousDictionaryDB::sendData(shared_ptr<ProtocolPartyData> otherParty){
-//TODO should be deleted!!
-    otherParty->getChannel()->write((byte*)&firstSeed, 8);
-    otherParty->getChannel()->write((byte*)&secondSeed, 8);
-    cout<<"firstSeed = "<<firstSeed<<endl;
-    cout<<"secondSeed = "<<secondSeed<<endl;
-    cout<<"key size in bytes: "<<keys.size()*8<<endl;
-    otherParty->getChannel()->write((byte*)keys.data(), keys.size()*8);
-//TODO until here
-
-    otherParty->getChannel()->write((byte*)variables.data(), variables.size()*8);
-
-}
-
-ObliviousDictionaryQuery::ObliviousDictionaryQuery(int hashSize) : ObliviousDictionary(hashSize){
-
-    auto key = prg.generateKey(128);
-    prg.setKey(key);
-}
-
-void ObliviousDictionaryQuery::readData(shared_ptr<ProtocolPartyData> otherParty){
-
-//TODO should be deleted!!
-    otherParty->getChannel()->read((byte*)&firstSeed, 8);
-    otherParty->getChannel()->read((byte*)&secondSeed, 8);
-    createSets();
-
-    cout<<"firstSeed = "<<firstSeed<<endl;
-    cout<<"secondSeed = "<<secondSeed<<endl;
-    vector<uint64_t> tmpKeys(hashSize);
-    otherParty->getChannel()->read((byte*)tmpKeys.data(), tmpKeys.size()*8);
-
-    int numKeysToCheck = 10;
-    keys.resize(numKeysToCheck);
-    for (int i=0; i<numKeysToCheck; i++){
-        keys[i] = tmpKeys[i];//prg.getRandom32() % hashSize;
-    }
-
-    variables.resize(tableRealSize*2 + gamma);
-//TODO until here
-
-    otherParty->getChannel()->read((byte*)variables.data(), variables.size()*8);
-}
-
-void ObliviousDictionaryQuery::calcRealValues(){
-
-    cout<<"vals:"<<endl;
-    GF2E dhBitsVal;
-    int size = keys.size();
-    vector<GF2E> vals(size);
-    for (int i=0; i<size; i++){
-
-        auto indices = dec(keys[i]);
-
-        dhBitsVal = 0;
-        for (int j=2; j<indices.size(); j++){
-            dhBitsVal *= variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
-
-        }
-        vals[i] = variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal;
-        cout<<"key = "<<keys[i]<<" val = "<<vals[i]<<endl;
-    }
-
-}
-
-void ObliviousDictionaryQuery::output(){
-
-}
-

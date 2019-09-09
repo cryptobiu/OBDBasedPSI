@@ -47,9 +47,9 @@ public:
 
 class Receiver : public ProtocolParty {
 private :
-    ObliviousDictionaryDB* dic;
+    ObliviousDictionary* dic;
 
-    void createDictionary();
+    GF2EVector createDictionary();
 public:
 
     Receiver(int argc, char *argv[]);

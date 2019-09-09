@@ -64,7 +64,7 @@ void ProtocolParty::run() {
 
 Receiver::Receiver(int argc, char *argv[]): ProtocolParty(argc, argv){
 
-    dic = new ObliviousDictionaryDB(hashSize);
+    dic = new ObliviousDictionary(hashSize);
     dic->setReportStatstics(reportStatistics);
 
 }
@@ -78,7 +78,7 @@ void Receiver::runOnline() {
     auto start = high_resolution_clock::now();
     auto t1 = high_resolution_clock::now();
 
-    createDictionary();
+    auto sigma = createDictionary();
     auto t2 = high_resolution_clock::now();
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
@@ -92,7 +92,7 @@ void Receiver::runOnline() {
 
 }
 
-void Receiver::createDictionary(){
+GF2EVector Receiver::createDictionary(){
     dic->init();
 
     auto start = high_resolution_clock::now();
@@ -134,7 +134,9 @@ void Receiver::createDictionary(){
         cout << "all protocol took in milliseconds: " << duration << endl;
 
         dic->checkOutput();
+
     }
+    return dic->getVariables();
 }
 
 Sender::Sender(int argc, char *argv[]) : ProtocolParty(argc, argv){
@@ -158,13 +160,6 @@ void Sender::runOnline() {
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
     cout << "read data took in milliseconds: " << duration << endl;
-
-    t1 = high_resolution_clock::now();
-//    dic->calcRealValues();
-    t2 = high_resolution_clock::now();
-
-    duration = duration_cast<milliseconds>(t2-t1).count();
-    cout << "calc real values took in milliseconds: " << duration << endl;
 
     auto end = high_resolution_clock::now();
 

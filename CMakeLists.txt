@@ -7,11 +7,11 @@ INCLUDE_DIRECTORIES($ENV{HOME} $ENV{HOME}/libscapi/install/include xxHash
         $ENV{HOME}/libscapi/install/include/OTExtensionBristol )
 link_directories(/usr/ssl/lib/ $ENV{HOME}/libscapi/install/lib xxHash/cmake_unofficial)
 
-set(SOURCE_FILES main.cpp ObliviousDictionary.cpp Tools.cpp ProtocolParty.cpp)
+set(SOURCE_FILES main.cpp ObliviousDictionary.cpp Tools.cpp ProtocolParty.cpp gf2e_mat_solve.cpp)
 
 
-add_executable(OBDBasedPSI main.cpp ObliviousDictionary.cpp Poly.cpp Tools.cpp ProtocolParty.cpp)
+add_executable(OBDBasedPSI main.cpp ObliviousDictionary.cpp Poly.cpp Tools.cpp ProtocolParty.cpp gf2e_mat_solve.cpp)
 
-TARGET_LINK_LIBRARIES(OBDBasedPSI ntl.a libxxhash.so
+TARGET_LINK_LIBRARIES(OBDBasedPSI ntl.a libxxhash.so givaro  blas linbox ntl iml
         $ENV{HOME}/libscapi/libscapi.a gmp
         libboost_system.a pthread crypto dl)

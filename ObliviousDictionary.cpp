@@ -58,13 +58,13 @@ void ObliviousDictionary::init() {
     keys.resize(hashSize);
     vals.reserve(hashSize);
 
-    uint64_t randomVal;
+    byte* randomVal;
     GF2X temp;
 
     for (int i=0; i < hashSize; i++){
         keys[i] = prg.getRandom64();
-        randomVal = prg.getRandom64();
-        GF2XFromBytes(temp, (byte*)&randomVal ,8);
+        prg.getPRGBytes(randomVal, 17);
+        GF2XFromBytes(temp, randomVal ,17);
         vals.insert({keys[i], to_GF2E(temp)});
     }
 
@@ -361,7 +361,8 @@ void ObliviousDictionary::generateExternalToolValues(){
 
 void ObliviousDictionary::unpeeling(){
     cout<<"in unpeeling"<<endl;
-    uint64_t key, randomVal;
+    uint64_t key;
+    byte* randomVal;
     GF2E dhBitsVal;
     GF2X temp;
 
@@ -391,8 +392,8 @@ void ObliviousDictionary::unpeeling(){
 //        Poly::evalMersenne((ZpMersenneLongElement*)&poliVal, polynomial, (ZpMersenneLongElement*)&key);
 //        poliVal = polyVals[peelingCounter];
         if (variables[indices[0]] == 0 && variables[tableRealSize + indices[1]] == 0 && sign[indices[0]] == 0 && sign[tableRealSize + indices[1]] == 0){
-            randomVal = prg.getRandom64();
-            GF2XFromBytes(temp, (byte*)&randomVal ,8);
+            randomVal = prg.getPRGBytesEX(17);
+            GF2XFromBytes(temp, randomVal ,17);
             variables[indices[0]] = to_GF2E(temp);
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
         }

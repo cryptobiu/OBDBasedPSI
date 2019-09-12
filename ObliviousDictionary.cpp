@@ -3,7 +3,6 @@
 //
 
 #include "ObliviousDictionary.h"
-#include "Tools.h"
 
 void ObliviousDictionary::createSets(){
     first = unordered_set<uint64_t, Hasher>(hashSize, Hasher(firstSeed));

@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <libscapi/include/primitives/Prg.hpp>
 #include <libscapi/include/comm/MPCCommunication.hpp>
-#include "Poly.h"
 #include "Hasher.h"
 #include <NTL/mat_GF2E.h>
 #include <NTL/GF2E.h>
@@ -18,11 +17,11 @@
 #include "gf2e_mat_solve.h"
 
 #include <chrono>
-class Tools;
 
 using namespace std::chrono;
 
 using namespace std;
+using namespace NTL;
 
 
 class ObliviousDictionary {

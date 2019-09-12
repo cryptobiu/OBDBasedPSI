@@ -7,6 +7,19 @@
 #include <libscapi/include/comm/MPCCommunication.hpp>
 #include <libscapi/include/cryptoInfra/Protocol.hpp>
 #include <libscapi/include/infra/Measurement.hpp>
+
+#include <cryptoTools/Network/IOService.h>
+#include <libOTe/NChooseOne/Oos/OosNcoOtReceiver.h>
+#include <libOTe/NChooseOne/Oos/OosNcoOtSender.h>
+#include <libOTe/Tools/Tools.h>
+#include <libOTe/Tools/LinearCode.h>
+#include <cryptoTools/Network/Channel.h>
+#include <cryptoTools/Network/Endpoint.h>
+#include <cryptoTools/Common/Log.h>
+#include <thread>
+
+using namespace osuCrypto;
+
 #include "ObliviousDictionary.h"
 
 class ProtocolParty : public Protocol {
@@ -50,6 +63,7 @@ private :
     ObliviousDictionary* dic;
 
     GF2EVector createDictionary();
+    void runOT(GF2EVector sigma);
 public:
 
     Receiver(int argc, char *argv[]);

@@ -62,8 +62,8 @@ void ObliviousDictionary::init() {
 
     for (int i=0; i < hashSize; i++){
         keys[i] = prg.getRandom64();
-        prg.getPRGBytes(randomVal, 17);
-        GF2XFromBytes(temp, randomVal ,17);
+        prg.getPRGBytes(randomVal, fieldSizeBytes);
+        GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
         vals.insert({keys[i], to_GF2E(temp)});
     }
 
@@ -78,10 +78,11 @@ void ObliviousDictionary::init() {
 }
 
 
-ObliviousDictionary::ObliviousDictionary(int hashSize) : hashSize(hashSize) {
+ObliviousDictionary::ObliviousDictionary(int hashSize, int fieldSize) : hashSize(hashSize), fieldSize(fieldSize) {
 
     gamma = 60;
-    initField();
+    initField(fieldSize);
+    fieldSizeBytes = fieldSize/8 + 1;
 
     auto key = prg.generateKey(128);
     prg.setKey(key);
@@ -318,7 +319,7 @@ void ObliviousDictionary::generateExternalToolValues(){
     }
 
     //TODO call the solver and get the results in variables
-    solve_api(matrix, values, variables);
+    solve_api(matrix, values, variables, fieldSize);
 
 //    for (int i=0; i<tableRealSize; i++){
 //        if (first.bucket_size(i) > 1){
@@ -391,8 +392,8 @@ void ObliviousDictionary::unpeeling(){
 //        Poly::evalMersenne((ZpMersenneLongElement*)&poliVal, polynomial, (ZpMersenneLongElement*)&key);
 //        poliVal = polyVals[peelingCounter];
         if (variables[indices[0]] == 0 && variables[tableRealSize + indices[1]] == 0 && sign[indices[0]] == 0 && sign[tableRealSize + indices[1]] == 0){
-            randomVal = prg.getPRGBytesEX(17);
-            GF2XFromBytes(temp, randomVal ,17);
+            randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+            GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
             variables[indices[0]] = to_GF2E(temp);
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
         }

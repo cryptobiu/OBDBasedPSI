@@ -30,6 +30,7 @@ protected:
     int hashSize;
     int tableRealSize;
     int gamma;
+    int fieldSize, fieldSizeBytes;
 
     PrgFromOpenSSLAES prg;
     vector<uint64_t> keys;
@@ -57,7 +58,7 @@ protected:
 
 public:
 
-    ObliviousDictionary(int hashSize);
+    ObliviousDictionary(int hashSize, int fieldSize);
 
      ~ObliviousDictionary(){
          if (reportStatistics == 1) {
@@ -91,7 +92,14 @@ public:
 
     void init();
 
-    GF2EVector getVariables() { return variables; }
+    vector<byte> getVariables() {
+        vector<byte> sigma(variables.size()*fieldSizeBytes);
+        for (int i=0; i<variables.size(); i++){
+            BytesFromGF2X(sigma.data() + i*fieldSizeBytes, rep(variables[i]), fieldSizeBytes);
+        }
+
+        return sigma;
+    }
 };
 
 

@@ -8,6 +8,7 @@
 #include <libscapi/include/cryptoInfra/Protocol.hpp>
 #include <libscapi/include/infra/Measurement.hpp>
 
+
 #include <cryptoTools/Network/IOService.h>
 #include <libOTe/NChooseOne/Oos/OosNcoOtReceiver.h>
 #include <libOTe/NChooseOne/Oos/OosNcoOtSender.h>
@@ -17,6 +18,8 @@
 #include <cryptoTools/Network/Endpoint.h>
 #include <cryptoTools/Common/Log.h>
 #include <thread>
+
+
 
 using namespace osuCrypto;
 
@@ -30,7 +33,7 @@ protected:
     int partyId;
     int times; //number of times to run the run function
     int iteration; //number of the current iteration
-    int hashSize;
+    int hashSize, fieldSize, fieldSizeBytes;
     int reportStatistics = 0;
 
     Measurement *timer;
@@ -62,8 +65,8 @@ class Receiver : public ProtocolParty {
 private :
     ObliviousDictionary* dic;
 
-    GF2EVector createDictionary();
-    void runOT(GF2EVector sigma);
+    vector<byte> createDictionary();
+    void runOT(vector<byte> & sigma);
 public:
 
     Receiver(int argc, char *argv[]);
@@ -74,6 +77,7 @@ public:
 
 class Sender : public ProtocolParty {
 private :
+    void runOT();
 public:
 
     Sender(int argc, char *argv[]);

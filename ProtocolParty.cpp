@@ -11,6 +11,8 @@ ProtocolParty::ProtocolParty(int argc, char* argv[]) : Protocol("ObliviousDictio
 
     this->times = stoi(this->getParser().getValueByKey(arguments, "internalIterationsNumber"));
     this->hashSize = stoi(this->getParser().getValueByKey(arguments, "hashSize"));
+    this->fieldSize = stoi(this->getParser().getValueByKey(arguments, "fieldSize"));
+    fieldSizeBytes = fieldSize/8 + 1;
 
     vector<string> subTaskNames{"Online"};
     timer = new Measurement(*this, subTaskNames);
@@ -64,7 +66,7 @@ void ProtocolParty::run() {
 
 Receiver::Receiver(int argc, char *argv[]): ProtocolParty(argc, argv){
 
-    dic = new ObliviousDictionary(hashSize);
+    dic = new ObliviousDictionary(hashSize, fieldSize);
     dic->setReportStatstics(reportStatistics);
 
 }
@@ -100,7 +102,7 @@ void Receiver::runOnline() {
 
 }
 
-GF2EVector Receiver::createDictionary(){
+vector<byte> Receiver::createDictionary(){
     dic->init();
 
     auto start = high_resolution_clock::now();
@@ -147,93 +149,6 @@ GF2EVector Receiver::createDictionary(){
     return dic->getVariables();
 }
 
-void testNco(
-        NcoOtExtSender &sender,
-        const u64 &numOTs,
-        PRNG &prng0,
-        Channel &sendChl,
-        NcoOtExtReceiver &recv,
-        PRNG &prng1,
-        Channel &recvChl)
-{
-
-
-    u64 stepSize = 33;
-    std::vector<block> inputs(stepSize);
-    setThreadName("Receiver");
-
-    for (size_t j = 0; j < 10; j++)
-    {
-        // perform the init on each of the classes. should be performed concurrently
-        auto thrd = std::thread([&]() {
-            setThreadName("Sender");
-            sender.init(numOTs, prng0, sendChl);
-        });
-        recv.init(numOTs, prng1, recvChl);
-        thrd.join();
-
-        std::vector<block> encoding1(stepSize), encoding2(stepSize);
-
-        // Get the random OT messages
-        for (u64 i = 0; i < numOTs; i += stepSize)
-        {
-            auto curStepSize = std::min<u64>(stepSize, numOTs - i);
-            std::vector<u8> skips(curStepSize);
-
-            prng0.get(inputs.data(), inputs.size());
-            prng0.get((bool*)skips.data(), skips.size());
-
-            for (u64 k = 0; k < curStepSize; ++k)
-            {
-
-                // The receiver MUST encode before the sender. Here we are only calling encode(...)
-                // for a single i. But the receiver can also encode many i, but should only make one
-                // call to encode for any given value of i.
-                if (skips[k])
-                {
-                    recv.zeroEncode(i + k);
-                }
-                else {
-                    recv.encode(i + k, &inputs[k], (u8*)&encoding1[k], sizeof(block));
-                }
-            }
-
-            // This call will send to the other party the next "curStepSize " corrections to the sender.
-            // If we had made more or less calls to encode above (for contigious i), then we should replace
-            // curStepSize  with however many calls we made. In an extreme case, the reciever can perform
-            // encode for i \in {0, ..., numOTs - 1}  and then call sendCorrection(recvChl, numOTs).
-            recv.sendCorrection(recvChl, curStepSize);
-
-            // receive the next curStepSize  correction values. This allows the sender to now call encode
-            // on the next curStepSize  OTs.
-            sender.recvCorrection(sendChl, curStepSize);
-
-            for (u64 k = 0; k < curStepSize; ++k)
-            {
-                // the sender can now call encode(i, ...) for k \in {0, ..., i}.
-                // Lets encode the same input and then we should expect to
-                // get the same encoding.
-                sender.encode(i + k, &inputs[k], (u8*)&encoding2[k], sizeof(block));
-
-                // check that we do in fact get the same value
-                if (! skips[k] && neq(encoding1[k], encoding2[k]))
-                    cout<<"ot[" + std::to_string(i+k) + "] not equal " LOCATION<<endl;
-
-                // In addition to the sender being able to obtain the same value as the receiver,
-                // the sender can encode and other codeword. This should result in a different
-                // encoding.
-                inputs[k] = prng0.get<block>();
-
-                sender.encode(i + k, &inputs[k], (u8*)&encoding2[k], sizeof(block));
-
-                if (eq(encoding1[k], encoding2[k]))
-                    cout<<"error"<<endl;
-            }
-        }
-    }
-
-}
-
 void setBaseOts(NcoOtExtSender& sender,
                 NcoOtExtReceiver& recv,
                 Channel& sendChl,
@@ -258,81 +173,120 @@ void setBaseOts(NcoOtExtSender& sender,
     a.get();
 }
 
-void Receiver::runOT(GF2EVector sigma){
-    setThreadName("Sender");
+void Receiver::runOT(vector<byte> & sigma){
+
+
+    cout<<"in runOT receiver"<<endl;
 
     PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
-    PRNG prng1(_mm_set_epi32(4253465, 3434565, 234435, 23987025));
 
-    u64 numOTs = 128 * 2;
+    u64 numOTs = sigma.size()/fieldSizeBytes;
 
+    OosNcoOtReceiver recv;
+    recv.configure(true, 40, fieldSize);
 
     std::string name = "n";
     IOService ios(0);
-    Session ep0(ios, "localhost", 1212, SessionMode::Server, name);
     Session ep1(ios, "localhost", 1212, SessionMode::Client, name);
     auto recvChl = ep1.addChannel(name, name);
-    auto sendChl = ep0.addChannel(name, name);
 
-
-    OosNcoOtSender sender;
-    OosNcoOtReceiver recv;
-
-    sender.configure(true, 40, 50);
-    recv.configure(true, 40, 50);
-
-    if (1)
-    {
-        setBaseOts(sender, recv, sendChl, recvChl);
-        //for (u64 i = 0; i < sender.mBaseChoiceBits.size(); ++i)
-        //{
-        //    auto b = sender.mBaseChoiceBits[i];
-        //    if (neq(sender.mGens[i].getSeed(), recv.mGens[i][b].getSeed()))
-        //        throw RTE_LOC;
-        //}
-    }
-    else
-    {
-        u64 baseCount = sender.getBaseOTCount();
-        //u64 codeSize = (baseCount + 127) / 128;
-
-        std::vector<block> baseRecv(baseCount);
-        std::vector<std::array<block, 2>> baseSend(baseCount);
-        BitVector baseChoice(baseCount);
-        baseChoice.randomize(prng0);
-
-        prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
-        for (u64 i = 0; i < baseCount; ++i)
-        {
-            baseRecv[i] = baseSend[i][baseChoice[i]];
-        }
-
-        auto a = std::async([&]() {sender.setBaseOts(baseRecv, baseChoice, sendChl); });
-        recv.setBaseOts(baseSend, prng0, recvChl);
-        a.get();
-    }
-
-cout<<"after setBaseOts"<<endl;
-    testNco(sender, numOTs, prng0, sendChl, recv, prng1, recvChl);
-cout<<"after test"<<endl;
-//    auto v = std::async([&] {
-//        recv.check(recvChl, toBlock(322334));
-//    });
+//    setBaseOts(sender, recv, sendChl, recvChl);
+//    u64 baseCount = recv.getBaseOTCount();
 //
-//    try {
-//        sender.check(sendChl,toBlock(324));
-//    }
-//    catch (...)
+//    std::vector<std::array<block, 2>> baseSend(baseCount);
+//    prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
+//
+//    osuCrypto::NaorPinkas base;
+//    base.send(baseSend, prng0, recvChl, 2);
+    recv.genBaseOts(prng0, recvChl);
+
+    auto messageCount = 1ull << fieldSize;
+//    Matrix<block> sendMessage(numOTs, messageCount);
+    std::vector<block> recvMessage(numOTs);
+
+    std::vector<u64> choices(numOTs);
+    for (u64 i = 0; i < choices.size(); ++i)
+    {
+//        choices[i] = *(u64*)(sigma.data() + i*fieldSizeBytes);
+        choices[i] = prng0.get<u8>();
+    }
+
+    recv.receiveChosen(messageCount, recvMessage, choices, prng0, recvChl);
+
+//    setThreadName("Sender");
+//
+//    PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+//    PRNG prng1(_mm_set_epi32(4253465, 3434565, 234435, 23987025));
+//
+//    u64 numOTs = 128 * 2;
+//
+//
+//    std::string name = "n";
+//    IOService ios(0);
+//    Session ep0(ios, "localhost", 1212, SessionMode::Server, name);
+//    Session ep1(ios, "localhost", 1212, SessionMode::Client, name);
+//    auto recvChl = ep1.addChannel(name, name);
+//    auto sendChl = ep0.addChannel(name, name);
+//
+//
+//    OosNcoOtSender sender;
+//    OosNcoOtReceiver recv;
+//
+//    sender.configure(true, 40, 76);
+//    recv.configure(true, 40, 76);
+//
+//    if (1)
 //    {
-//        //sendChl.mBase->mLog;
+//        setBaseOts(sender, recv, sendChl, recvChl);
+//        //for (u64 i = 0; i < sender.mBaseChoiceBits.size(); ++i)
+//        //{
+//        //    auto b = sender.mBaseChoiceBits[i];
+//        //    if (neq(sender.mGens[i].getSeed(), recv.mGens[i][b].getSeed()))
+//        //        throw RTE_LOC;
+//        //}
 //    }
-//    v.get();
+//    else
+//    {
+//        u64 baseCount = sender.getBaseOTCount();
+//        //u64 codeSize = (baseCount + 127) / 128;
 //
-    auto sender2 = sender.split();
-    auto recv2 = recv.split();
-
-    testNco(*sender2, numOTs, prng0, sendChl, *recv2, prng1, recvChl);
-    cout<<"after test 2"<<endl;
+//        std::vector<block> baseRecv(baseCount);
+//        std::vector<std::array<block, 2>> baseSend(baseCount);
+//        BitVector baseChoice(baseCount);
+//        baseChoice.randomize(prng0);
+//
+//        prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
+//        for (u64 i = 0; i < baseCount; ++i)
+//        {
+//            baseRecv[i] = baseSend[i][baseChoice[i]];
+//        }
+//
+//        auto a = std::async([&]() {sender.setBaseOts(baseRecv, baseChoice, sendChl); });
+//        recv.setBaseOts(baseSend, prng0, recvChl);
+//        a.get();
+//    }
+//
+//cout<<"after setBaseOts"<<endl;
+//    testNco(sender, numOTs, prng0, sendChl, recv, prng1, recvChl);
+//cout<<"after test"<<endl;
+////    auto v = std::async([&] {
+////        recv.check(recvChl, toBlock(322334));
+////    });
+////
+////    try {
+////        sender.check(sendChl,toBlock(324));
+////    }
+////    catch (...)
+////    {
+////        //sendChl.mBase->mLog;
+////    }
+////    v.get();
+////
+//    auto sender2 = sender.split();
+//    auto recv2 = recv.split();
+//
+//    testNco(*sender2, numOTs, prng0, sendChl, *recv2, prng1, recvChl);
+//    cout<<"after test 2"<<endl;
 
 
 }
@@ -354,6 +308,7 @@ void Sender::runOnline() {
     auto t1 = high_resolution_clock::now();
 
 //    dic->readData(otherParty);
+    runOT();
     auto t2 = high_resolution_clock::now();
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
@@ -366,5 +321,47 @@ void Sender::runOnline() {
 
 
 
+}
+
+void Sender::runOT(){
+    cout<<"in runOT sender"<<endl;
+    PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987025));
+
+    u64 numOTs = 314;
+
+    OosNcoOtSender sender;
+    sender.configure(true, 40, fieldSize);
+
+    std::string name = "n";
+    IOService ios(0);
+    Session ep0(ios, "localhost", 1212, SessionMode::Server, name);
+    auto sendChl = ep0.addChannel(name, name);
+
+////    setBaseOts(sender, recv, sendChl, recvChl);
+//    u64 baseCount = sender.getBaseOTCount();
+//
+//    std::vector<block> baseRecv(baseCount);
+//    BitVector baseChoice(baseCount);
+//    baseChoice.randomize(prng0);
+//
+//    NaorPinkas base;
+//    base.receive(baseChoice, baseRecv,prng0, sendChl, 2);
+
+    sender.genBaseOts(prng0, sendChl);
+
+
+    auto messageCount = 1ull << fieldSize;
+    Matrix<block> sendMessage(numOTs, messageCount);
+
+    prng0.get(sendMessage.data(), sendMessage.size());
+
+
+    sender.sendChosen(sendMessage, prng0, sendChl);
+
+//    for (u64 i = 0; i < choices.size(); ++i)
+//    {
+//        if (neq(recvMessage[i], sendMessage(i, choices[i])))
+//            cout<<"bad message"<<endl;
+//    }
 }
 

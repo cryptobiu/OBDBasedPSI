@@ -123,10 +123,10 @@ int main(int argc, char* argv[]) {
     int partyID = stoi(parser.getValueByKey(parameters, "partyID"));
 
     if (partyID == 0) {
-        Receiver dic(argc, argv);
-        dic.run();
+        Receiver receiver(argc, argv);
+        receiver.run();
     } else {
-        Sender dic(argc, argv);
-        dic.run();
+        Sender sender(argc, argv);
+        sender.run();
     }
 }

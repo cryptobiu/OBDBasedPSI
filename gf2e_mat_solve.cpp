@@ -11,15 +11,15 @@ using namespace std;
 
 #include "gf2e_mat_solve.h"
 
-void initField(){
+void initField(int fieldSize){
 	typedef LinBox::NTL_GF2E Field;
-	Field F(2, 132);
+	Field F(2, fieldSize);
 }
 
-int solve_api(const GF2EMatrix & A, const GF2EVector & B, GF2EVector & X) {
+int solve_api(const GF2EMatrix & A, const GF2EVector & B, GF2EVector & X, int fieldSize) {
 
     typedef LinBox::NTL_GF2E Field;
-	Field F(2, 132);
+	Field F(2, fieldSize);
 
 	size_t rows = A.size();
 	if(0 == rows) {

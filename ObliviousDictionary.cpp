@@ -4,27 +4,166 @@
 
 #include "ObliviousDictionary.h"
 
-void ObliviousDictionary::createSets(){
-    first = unordered_set<uint64_t, Hasher>(hashSize, Hasher(firstSeed));
-    second = unordered_set<uint64_t, Hasher>(hashSize, Hasher(secondSeed));
+ObliviousDictionary::ObliviousDictionary(int hashSize, int fieldSize, int gamma, int v) : hashSize(hashSize), fieldSize(fieldSize), gamma(gamma), v(v){
+
+    initField(fieldSize);
+    fieldSizeBytes = fieldSize % 8 == 0 ? fieldSize/8 : fieldSize/8 + 1;
+
+    auto key = prg.generateKey(128);
+    prg.setKey(key);
+
+
+
+
+//    firstEncValues.resize(tableRealSize, 0);
+//    secondEncValues.resize(tableRealSize, 0);
+
+//    keys.resize(hashSize);
+//    vals.reserve(hashSize);
+//
+//    for (int i=0; i<hashSize; i++){
+//        keys[i] = prg.getRandom64() >> 3;
+//        vals.insert({keys[i],prg.getRandom64()>>3});
+//    }
+//
+//    int numKeysToCheck = 10;
+//    cout<<"keys to check with the other party"<<endl;
+//    for (int i=0; i<numKeysToCheck; i++){
+//        cout<<"key = "<<keys[i]<<" val = "<<vals[keys[i]]<<endl;
+//    }
+
+}
+
+uint64_t OBDTables::getDHBits(uint64_t key){
+    auto bits = DH(key);
+    return bits >> (64-gamma);
+}
+
+void ObliviousDictionary::init() {
+
+    vals.clear();
+    vals.reserve(hashSize);
+
+    GF2X temp;
+    for (int i=0; i < hashSize; i++){
+
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<"val in bytes = "<<(int)(values[i*fieldSizeBytes + j]) << " ";
+//        }
+//        cout<<endl;
+
+        GF2XFromBytes(temp, values.data() + i*fieldSizeBytes ,fieldSizeBytes);
+        vals.insert({keys[i], to_GF2E(temp)});
+//        auto tempval = to_GF2E(temp);
+//        cout<<"val in GF2E = "<<tempval<<endl;
+
+//        vector<byte> tempvec(fieldSizeBytes);
+//        BytesFromGF2X(tempvec.data(), rep(tempval), fieldSizeBytes);
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<"returned val in bytes = "<<(int)*(tempvec.data() + j)<< " ";
+//        }
+//        cout<<endl;
+    }
+
+//    int numKeysToCheck = 10;
+//    cout<<"keys to check with the other party"<<endl;
+//    for (int i=0; i<numKeysToCheck; i++){
+//        cout << "key = " << keys[i] << " val = " << vals[keys[i]] << endl;
+//    }
+
+//    first.clear();
+//    second.clear();
+}
+
+void OBDTables::init() {
+
+    ObliviousDictionary::init();
+    peelingVector.clear();
+    peelingCounter = 0;
+}
+
+void OBDTables::encode(){
+    auto start = high_resolution_clock::now();
+    auto t1 = high_resolution_clock::now();
+
+    fillTables();
+    auto t2 = high_resolution_clock::now();
+
+    auto duration = duration_cast<milliseconds>(t2-t1).count();
+    cout << "fillTables took in milliseconds: " << duration << endl;
+
+    t1 = high_resolution_clock::now();
+    peeling();
+
+    t2 = high_resolution_clock::now();
+
+    duration = duration_cast<milliseconds>(t2-t1).count();
+    cout << "peeling took in milliseconds: " << duration << endl;
+
+    t1 = high_resolution_clock::now();
+    generateExternalToolValues();
+    t2 = high_resolution_clock::now();
+
+    duration = duration_cast<milliseconds>(t2-t1).count();
+    cout << "calc equations took in milliseconds: " << duration << endl;
+
+    t1 = high_resolution_clock::now();
+    unpeeling();
+
+    t2 = high_resolution_clock::now();
+
+    duration = duration_cast<milliseconds>(t2 - t1).count();
+    cout << "unpeeling took in milliseconds: " << duration << endl;
+
+    auto end = high_resolution_clock::now();
+
+    duration = duration_cast<milliseconds>(end - start).count();
+    cout << "encode took in milliseconds: " << duration << endl;
+};
+
+OBD2Tables::OBD2Tables(int hashSize, int fieldSize, int gamma, int v) : OBDTables(hashSize, fieldSize, gamma, v){
+    //the values are fixed for tests reasons
+    firstSeed = 1;
+    secondSeed = 2;
+
+
+    auto start = high_resolution_clock::now();
+    createSets();
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end-start).count();
+
+    cout << "time in milliseconds for create sets: " << duration << endl;
+    variables.resize(2*tableRealSize + gamma, to_GF2E(0));
+    sign.resize(2*tableRealSize, 0);
+
+}
+
+void OBD2Tables::createSets(){
+    first = unordered_set<uint64_t, Hasher>(hashSize*1.2, Hasher(firstSeed));
+    second = unordered_set<uint64_t, Hasher>(hashSize*1.2, Hasher(secondSeed));
 
     tableRealSize = first.bucket_count();
     cout<<"tableRealSize = "<<tableRealSize<<endl;
 
-    while(tableRealSize/1.2 < hashSize){
-        first = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(firstSeed));
-        second = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(secondSeed));
+//    while(tableRealSize/1.2 < hashSize){
+//        first = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(firstSeed));
+//        second = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(secondSeed));
+//
+//        tableRealSize = first.bucket_count();
+//        cout<<"tableRealSize = "<<tableRealSize<<endl;
+//    }
 
-        tableRealSize = first.bucket_count();
-        cout<<"tableRealSize = "<<tableRealSize<<endl;
-    }
-
-
-    hashSize = tableRealSize/1.2;
-    cout<<"new hashSize = "<<hashSize<<endl;
+//    hashSize = tableRealSize/1.2;
 }
 
-vector<uint64_t> ObliviousDictionary::dec(uint64_t key){
+void OBD2Tables::init() {
+
+    OBDTables::init();
+    first.clear();
+    second.clear();
+}
+
+vector<uint64_t> OBD2Tables::dec(uint64_t key){
 
     vector<uint64_t> indices;
     indices.push_back(first.bucket(key));
@@ -42,103 +181,25 @@ vector<uint64_t> ObliviousDictionary::dec(uint64_t key){
     return indices;
 }
 
-uint64_t ObliviousDictionary::getDHBits(uint64_t key){
-    auto bits = DH(key);
-    return bits >> (64-gamma);
-}
+vector<byte> OBD2Tables::decode(uint64_t key){
+    auto indices = dec(key);
 
-void ObliviousDictionary::init() {
+    GF2E val(0);
+    for (int j=2; j<indices.size(); j++){
+        val += variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
 
-    vals.clear();
-    keys.clear();
-    peelingVector.clear();
-    peelingCounter = 0;
-
-    keys.resize(hashSize);
-    vals.reserve(hashSize);
-
-    byte* randomVal;
-    GF2X temp;
-
-    for (int i=0; i < hashSize; i++){
-        keys[i] = prg.getRandom64();
-        prg.getPRGBytes(randomVal, fieldSizeBytes);
-        GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
-        vals.insert({keys[i], to_GF2E(temp)});
     }
 
-    int numKeysToCheck = 10;
-    cout<<"keys to check with the other party"<<endl;
-    for (int i=0; i<numKeysToCheck; i++){
-        cout << "key = " << keys[i] << " val = " << vals[keys[i]] << endl;
-    }
+    val += variables[indices[0]];
+    val += variables[tableRealSize + indices[1]];
 
-    first.clear();
-    second.clear();
+    vector<byte> valBytes(fieldSizeBytes);
+    BytesFromGF2X(valBytes.data(), rep(val), fieldSizeBytes);
+
+    return valBytes;
 }
 
-
-ObliviousDictionary::ObliviousDictionary(int hashSize, int fieldSize) : hashSize(hashSize), fieldSize(fieldSize) {
-
-    gamma = 60;
-    initField(fieldSize);
-    fieldSizeBytes = fieldSize/8 + 1;
-
-    auto key = prg.generateKey(128);
-    prg.setKey(key);
-
-    firstSeed = prg.getRandom64();
-    secondSeed = prg.getRandom64();
-    dhSeed = prg.getRandom64();
-
-    DH = Hasher(dhSeed);
-
-    auto start = high_resolution_clock::now();
-    createSets();
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end-start).count();
-
-    cout << "time in milliseconds for create sets: " << duration << endl;
-
-    start = high_resolution_clock::now();
-    first.insert(1);
-    end = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(end-start).count();
-    cout << "time in milliseconds for insert first element: " << duration << endl;
-
-    start = high_resolution_clock::now();
-    first.erase(1);
-    end = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(end-start).count();
-    cout << "time in milliseconds for erase first element: " << duration << endl;
-
-    cout<<"after create sets"<<endl;
-    cout<<"tableRealSize = "<<tableRealSize<<endl;
-    cout<<"hashSize = "<<hashSize<<endl;
-
-//    firstEncValues.resize(tableRealSize, 0);
-//    secondEncValues.resize(tableRealSize, 0);
-    variables.resize(2*tableRealSize + gamma);
-    sign.resize(2*tableRealSize, 0);
-//    keys.resize(hashSize);
-//    vals.reserve(hashSize);
-//
-//    for (int i=0; i<hashSize; i++){
-//        keys[i] = prg.getRandom64() >> 3;
-//        vals.insert({keys[i],prg.getRandom64()>>3});
-//    }
-//
-//    int numKeysToCheck = 10;
-//    cout<<"keys to check with the other party"<<endl;
-//    for (int i=0; i<numKeysToCheck; i++){
-//        cout<<"key = "<<keys[i]<<" val = "<<vals[keys[i]]<<endl;
-//    }
-
-
-
-}
-
-void ObliviousDictionary::fillTables(){
+void OBD2Tables::fillTables(){
 
     for (int i=0; i<hashSize; i++){
 
@@ -152,13 +213,9 @@ void ObliviousDictionary::fillTables(){
 //        }
     }
 
-
-    cout<<"first set contains "<<first.size()<<endl;
-    cout<<"second set contains "<<second.size()<<endl;
-
 }
 
-void ObliviousDictionary::peeling(){
+int OBD2Tables::peeling(){
 
     peelingVector.resize(hashSize);
     peelingCounter = 0;
@@ -239,29 +296,39 @@ void ObliviousDictionary::peeling(){
 
     cout<<"peelingCounter = "<<peelingCounter<<endl;
 
+    if (hashSize - peelingCounter > v){
+        return 0; //Failure
+    }
+    else return 1;
+
 }
 
-void ObliviousDictionary::generateExternalToolValues(){
+void OBD2Tables::generateExternalToolValues(){
 
 //    int matrixSize = first.size()*(2*tableRealSize+gamma); // the rows count is the number of edges left after peeling
-                                                        //columns count is number of vertexes and gamma bits.
+    //columns count is number of vertexes and gamma bits.
 
-//    byte* matrix = new byte(matrixSize);
-//    memset(matrix, 0, matrixSize);
-//    byte* values = new byte(first.size());
+    auto start = high_resolution_clock::now();
+    int matrixSize = hashSize - peelingCounter;
+    GF2EMatrix matrix(matrixSize);
 
-    GF2EMatrix matrix(first.size());
+    cout<<"num of rows = "<<matrixSize<<endl;
+    cout<<"num of cols = "<<2*matrixSize + gamma<<endl;
+//    for(size_t i = 0; i < matrixSize; ++i) {
+//        matrix[i].resize(2*tableRealSize+gamma);
+//        for(size_t j = 0; j < 2*tableRealSize+gamma; ++j) {
+//            matrix[i][j] = to_GF2E(0);
+//        }
+//    }
+    GF2EVector values(matrixSize);
 
-    cout<<"num of rows = "<<first.size()<<endl;
-    cout<<"num of cols = "<<2*tableRealSize+gamma<<endl;
-    for(size_t i = 0; i < first.size(); ++i) {
-        matrix[i].resize(2*tableRealSize+gamma);
-        for(size_t j = 0; j < 2*tableRealSize+gamma; ++j) {
-            matrix[i][j] = to_GF2E(0);
-        }
-    }
-    GF2EVector values(first.size());
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end-start).count();
 
+    cout << "construct time in milliseconds for protocol: " << duration << endl;
+
+    unordered_map<uint64_t, int> firstTableCols;
+    unordered_map<uint64_t, int> secondTableCols;
 //    cout<<"matrix:"<<endl;
 //    for (int i=0; i<first.size(); i++){
 //        for (int j=0; j<2*tableRealSize+gamma; j++){
@@ -269,65 +336,97 @@ void ObliviousDictionary::generateExternalToolValues(){
 //        }
 //        cout<<endl;
 //    }
-//    GF2X irreduciblePolynomial = BuildSparseIrred_GF2X(132);
-//    GF2E::init(irreduciblePolynomial);
     //Get all the edges that are in the graph's circles and calc the polynomial values that should be for them.
-    int edgesCounter = 0;
+
+    start = high_resolution_clock::now();
+    int rowCounter = 0;
+    int firstColsCounter = 0;
+    int secondColsCounter = 0;
+
+    int firstPos, secondPos;
     for (int i=0; i<tableRealSize; i++){
         if (first.bucket_size(i) > 1){
             for (auto key = first.begin(i); key!= first.end(i); ++key){
-//                matrix[edgesCounter*(2*tableRealSize+60) + i] = 1; //put 1 in the left vertex of the edge
-//                matrix[edgesCounter*(2*tableRealSize+60) + tableRealSize + second.bucket(*key)] = 1; //put 1 in the right vertex of the edge
 
-                auto secondPosition = second.bucket(*key);
-                matrix[edgesCounter][i] = to_GF2E(1); //put 1 in the left vertex of the edge
-                matrix[edgesCounter][tableRealSize + secondPosition] = to_GF2E(1); //put 1 in the right vertex of the edge
+                matrix[rowCounter].resize(2*matrixSize+gamma);
+
+                if (firstTableCols.find(i) == firstTableCols.end()){
+                    firstTableCols.insert({i, firstColsCounter});
+                    firstColsCounter++;
+                }
+
+                int secondIndex = second.bucket(*key);
+                if (secondTableCols.find(secondIndex) == secondTableCols.end()){
+                    secondTableCols.insert({secondIndex, secondColsCounter});
+                    secondColsCounter++;
+
+                }
+                firstPos = firstTableCols[i];
+                secondPos = secondTableCols[secondIndex];
+//                cout<<"key "<<*key<<" first hash val = "<<i<< "and index "<<firstTableCols[i]<<" in the first cols"<<endl;
+//                cout<<"key "<<*key<<" second hash val = "<<secondIndex<<"and index "<<secondTableCols[secondIndex]<<" in the second cols"<<endl;
+
+
+                matrix[rowCounter][firstPos] = to_GF2E(1); //put 1 in the left vertex of the edge
+                matrix[rowCounter][matrixSize + secondPos] = to_GF2E(1); //put 1 in the right vertex of the edge
                 sign[i] = 1;
-                sign[tableRealSize + secondPosition] = 1;
+                sign[tableRealSize + secondIndex] = 1;
                 auto dhBits = getDHBits(*key);
 //                cout<<"DH bits: "<<dhBits<<endl;
                 uint64_t mask = 1;
                 for (int j=0; j<gamma; j++){
-//                    matrix[edgesCounter*(2*tableRealSize+60) + 2*tableRealSize + j] = dhBIts & mask; //put 1 in the right vertex of the edge
 //                    cout<<(dhBits & mask)<<" ";
-                    matrix[edgesCounter][ 2*tableRealSize + j] = to_GF2E(dhBits & mask); //put 1 in the right vertex of the edge
-//                    matrix[edgesCounter][ 2*tableRealSize + j] = to_GF2E(1); //put 1 in the right vertex of the edge
+                    matrix[rowCounter][ 2*matrixSize + j] = to_GF2E(dhBits & mask); //put 1 in the right vertex of the edge
                     dhBits = dhBits >> 1;
 
                 }
 //                cout<<endl;
-                values[edgesCounter] = vals[*key];
-                edgesCounter++;
+                values[rowCounter] = vals[*key];
+                rowCounter++;
 
             }
         }
     }
 
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end-start).count();
+
+    cout << "fill time in milliseconds for protocol: " << duration << endl;
+
 //    cout<<"matrix:"<<endl;
-//    for (int i=0; i<first.size(); i++){
-//        for (int j=0; j<2*tableRealSize+gamma; j++){
+//    for (int i=0; i<rowCounter; i++){
+//        for (int j=0; j<2*rowCounter+gamma; j++){
 //            cout<<matrix[i][j]<<" ";
 //        }
 //        cout<<endl;
 //    }
 
-    cout<<"num of equations =  "<<edgesCounter<<endl;
+    cout<<"num of equations =  "<<rowCounter<<endl;
 
     if(reportStatistics==1) {
 
-        statisticsFile << edgesCounter << ", \n";
+        statisticsFile << rowCounter << ", \n";
     }
 
-    //TODO call the solver and get the results in variables
-    solve_api(matrix, values, variables, fieldSize);
+    start = high_resolution_clock::now();
 
-//    for (int i=0; i<tableRealSize; i++){
-//        if (first.bucket_size(i) > 1){
-//            cout<<"in check loop"<<endl;
-//            for (auto key = first.begin(i); key!= first.end(i); ++key){
-////                matrix[edgesCounter*(2*tableRealSize+60) + i] = 1; //put 1 in the left vertex of the edge
-////                matrix[edgesCounter*(2*tableRealSize+60) + tableRealSize + second.bucket(*key)] = 1; //put 1 in the right vertex of the edge
-//
+    GF2EVector variablesSlim(2*matrixSize + gamma);
+    //TODO call the solver and get the results in variables
+    solve_api(matrix, values, variablesSlim, fieldSize);
+
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end-start).count();
+
+    cout << "solver time in milliseconds for protocol: " << duration << endl;
+    for (int i=0; i<tableRealSize; i++) {
+        if (first.bucket_size(i) > 1) {
+            for (auto key = first.begin(i); key != first.end(i); ++key) {
+//                matrix[edgesCounter*(2*tableRealSize+60) + i] = 1; //put 1 in the left vertex of the edge
+//                matrix[edgesCounter*(2*tableRealSize+60) + tableRealSize + second.bucket(*key)] = 1; //put 1 in the right vertex of the edge
+
+                int secondIndex = second.bucket(*key);
+                variables[i] = variablesSlim[firstTableCols[i]];
+                variables[tableRealSize + secondIndex] = variablesSlim[matrixSize + secondTableCols[secondIndex]];
 //                auto val = variables[i] + variables[tableRealSize + second.bucket(*key)] ;
 //                auto dhBits = getDHBits(*key);
 //                uint64_t mask = 1;
@@ -345,9 +444,15 @@ void ObliviousDictionary::generateExternalToolValues(){
 //                    cout<<"correct!!"<<endl;
 //                }
 //                edgesCounter++;
-//
-//            }
-//        }
+
+            }
+        }
+    }
+
+    for (int i=0; i<gamma; i++){
+        variables[2*tableRealSize + i] = variablesSlim[2*matrixSize + i];
+    }
+
 
 //    cout<<"variables:"<<endl;
 //    for (int i=0; i<variables.size(); i++){
@@ -359,7 +464,7 @@ void ObliviousDictionary::generateExternalToolValues(){
 
 
 
-void ObliviousDictionary::unpeeling(){
+void OBD2Tables::unpeeling(){
     cout<<"in unpeeling"<<endl;
     uint64_t key;
     byte* randomVal;
@@ -413,7 +518,7 @@ void ObliviousDictionary::unpeeling(){
 //            cout<<"val = "<<vals[key]<<endl;
         }
     }
-    cout<<"peelingCounter = "<<peelingCounter<<endl;
+//    cout<<"peelingCounter = "<<peelingCounter<<endl;
 
 //    cout<<"variables:"<<endl;
 //    for (int i=0; i<variables.size(); i++){
@@ -422,10 +527,11 @@ void ObliviousDictionary::unpeeling(){
 //    cout<<endl;
 }
 
-void ObliviousDictionary::checkOutput(){
+bool OBD2Tables::checkOutput(){
 
     uint64_t key;
     GF2E val, dhBitsVal;
+    bool error = false;
 
     for (int i=0; i<hashSize; i++){
         key = keys[i];
@@ -440,9 +546,10 @@ void ObliviousDictionary::checkOutput(){
         }
 
         if ((variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal) == val) {
-            if (i%100000 == 0)
-                cout<<"good value!!! val = "<<val<<endl;
+//            if (i%100000 == 0)
+//                cout<<"good value!!! val = "<<val<<endl;
         } else {//if (!hasLoop()){
+            error = true;
             cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal)<<endl;
             cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
             cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
@@ -450,13 +557,798 @@ void ObliviousDictionary::checkOutput(){
         }
 
     }
+    if (!error){
+        cout<<"success!!!! dictionary is fine."<<endl;
+    }
+    return error;
 }
 
-bool ObliviousDictionary::hasLoop(){
+bool OBD2Tables::hasLoop(){
     for (int position = 0; position<tableRealSize; position++) {
         if (first.bucket_size(position) > 1) {
             return true;
         }
     }
     return false;
+}
+
+OBD3Tables::OBD3Tables(int hashSize, double c1, int fieldSize, int gamma, int v) : OBDTables(hashSize, fieldSize, gamma, v), c1(c1) {
+
+    firstSeed = prg.getRandom64();
+    secondSeed = prg.getRandom64();
+    thirdSeed = prg.getRandom64();
+
+    auto start = high_resolution_clock::now();
+    createSets();
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end-start).count();
+
+//    cout << "time in milliseconds for create sets: " << duration << endl;
+//
+//
+//        cout << "after create sets" << endl;
+//        cout << "tableRealSize = " << tableRealSize << endl;
+//        cout << "hashSize = " << hashSize << endl;
+
+    variables.resize(3*tableRealSize + gamma, to_GF2E(0));
+    sign.resize(3*tableRealSize, 0);
+
+}
+
+
+
+void OBD3Tables::createSets(){
+    double factorSize = c1/3;
+//    cout<<"factorSize = "<<factorSize<<endl;
+//    cout<<"items in set = "<<hashSize*factorSize<<endl;
+
+    first = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(firstSeed));
+    second = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(secondSeed));
+    third = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(thirdSeed));
+
+
+    tableRealSize = first.bucket_count();
+
+//    cout<<"tableRealSize = "<<tableRealSize<<endl;
+
+//    while(tableRealSize*3/c1 < hashSize){
+//        first = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(firstSeed));
+//        second = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(secondSeed));
+//        third = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(thirdSeed));
+//
+//        tableRealSize = first.bucket_count();
+//            cout<<"tableRealSize = "<<tableRealSize<<endl;
+//    }
+
+    first.max_load_factor(3);
+    second.max_load_factor(3);
+    third.max_load_factor(3);
+
+//    hashSize = tableRealSize*3/c1;
+
+//        cout<<"new hashSize = "<<hashSize<<endl;
+}
+
+void OBD3Tables::init() {
+
+    OBDTables::init();
+    first.clear();
+    second.clear();
+    third.clear();
+}
+
+vector<uint64_t> OBD3Tables::dec(uint64_t key){
+
+    vector<uint64_t> indices;
+    indices.push_back(first.bucket(key));
+    indices.push_back(second.bucket(key));
+    indices.push_back(third.bucket(key));
+
+    auto dhBits = getDHBits(key);
+    uint64_t mask = 1;
+    for (int j=0; j<gamma; j++){
+        if ((dhBits & mask) == 1){
+            indices.push_back(j); //put 1 in the right vertex of the edge
+        }
+        dhBits = dhBits >> 1;
+    }
+
+    return indices;
+}
+
+vector<byte> OBD3Tables::decode(uint64_t key){
+    auto indices = dec(key);
+
+    GF2E val(0);
+    for (int j=3; j<indices.size(); j++){
+        val += variables[3*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+
+    }
+
+    val += variables[indices[0]];
+    val += variables[tableRealSize + indices[1]];
+    val += variables[2*tableRealSize + indices[2]];
+
+    vector<byte> valBytes(fieldSizeBytes);
+    BytesFromGF2X(valBytes.data(), rep(val), fieldSizeBytes);
+
+    return valBytes;
+}
+
+
+
+void OBD3Tables::fillTables(){
+
+    for (int i=0; i<hashSize; i++){
+
+//            cout<<"key is "<<keys[i]<<endl;
+//        auto pair = first.insert(keys[i]);
+        first.insert(keys[i]);
+        second.insert(keys[i]);
+        third.insert(keys[i]);
+
+//        cout<<"first bucket = "<<first.bucket(keys[i])<<" second bucket = "<<second.bucket(keys[i])<<" third bucket = "<<third.bucket(keys[i])<<endl;
+
+//        if (pair.second == false){
+//            cout<<"key = "<<keys[i]<<" i = "<<i<<endl;
+//        }
+    }
+
+
+//        cout << "first set contains " << first.size() << endl;
+//        cout << "second set contains " << second.size() << endl;
+//        cout << "third set contains " << third.size() << endl;
+
+
+}
+
+int OBD3Tables::peeling() {
+
+    peelingVector.resize(hashSize);
+    peelingCounter = 0;
+    int counterInLoop = 1;
+
+    queue<int> queueFirst;
+    queue<int> queueSecond;
+    queue<int> queueThird;
+
+//    cout << "in peeling" << endl;
+//    cout<<"first loop"<<endl;
+
+//    auto start = high_resolution_clock::now();
+
+    //Goes on the first hash
+    for (int position = 0; position < tableRealSize; position++) {
+        if (first.bucket_size(position) == 1) {
+            //Delete the vertex from the graph
+            auto key = *first.begin(position);
+//                cout << "remove key " << key << endl;
+            counterInLoop++;
+            peelingVector[peelingCounter++] = key;
+            first.erase(key);
+
+            //Update the second vertex on the edge
+            second.erase(key);
+            third.erase(key);
+        }
+    }
+
+//    auto end = high_resolution_clock::now();
+//    auto duration = duration_cast<milliseconds>(end-start).count();
+//        cout << "time in milliseconds for first peel: " << duration << endl;
+
+//    start = high_resolution_clock::now();
+    int bucketInd;
+    //Goes on the second has
+    for (int position = 0; position < tableRealSize; position++) {
+        if (second.bucket_size(position) == 1) {
+            //Delete the vertex from the graph
+            auto key = *second.begin(position);
+            second.erase(key);
+//                cout << "remove key " << key << endl;
+            counterInLoop++;
+            peelingVector[peelingCounter++] = key;
+
+            bucketInd = first.bucket(key);
+            first.erase(key);
+
+            if(first.bucket_size(bucketInd)==1)
+                queueFirst.push(bucketInd);
+
+            //Update the second vertex on the edge
+            third.erase(key);
+        }
+    }
+
+//    end = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(end-start).count();
+//       cout << "time in milliseconds for second peel: " << duration << endl;
+
+//    start = high_resolution_clock::now();
+    for (int position = 0; position < tableRealSize; position++) {
+        if (third.bucket_size(position) == 1) {
+            //Delete the vertex from the graph
+            auto key = *third.begin(position);
+            third.erase(key);
+//                cout << "remove key " << key << endl;
+            counterInLoop++;
+            peelingVector[peelingCounter++] = key;
+
+            bucketInd = first.bucket(key);
+            first.erase(key);
+
+            if(first.bucket_size(bucketInd)==1)
+                queueFirst.push(bucketInd);
+
+            bucketInd = second.bucket(key);
+            second.erase(key);
+
+            if(second.bucket_size(bucketInd)==1)
+                queueSecond.push(bucketInd);
+
+        }
+    }
+
+//    end = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(end-start).count();
+//       cout << "time in milliseconds for third peel: " << duration << endl;
+
+//       cout << "peelingCounter : " << peelingCounter << endl;
+//        cout << "hashSize : " << hashSize << endl;
+//
+//        cout << "queueFirst.size() : " << queueFirst.size() << endl;
+//        cout << "queueSecond.size() : " << queueSecond.size() << endl;
+//        cout << "queueThird.size() : " << queueThird.size() << endl;
+
+
+//    start = high_resolution_clock::now();
+    //handle the queues one by one
+    while(queueFirst.size()!=0 ||
+          queueSecond.size()!=0 ||
+          queueThird.size()!=0){
+
+        handleQueue(queueFirst, first, queueSecond, second, queueThird,third);
+
+        handleQueue(queueSecond, second, queueFirst, first, queueThird,third);
+
+        handleQueue(queueThird,third, queueFirst, first, queueSecond, second);
+
+    }
+
+//    end = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(end-start).count();
+//      cout << "time in milliseconds for peel queues: " << duration << endl;
+
+
+//        cout << "peelingCounter : " << peelingCounter << endl;
+//        cout << "hashSize : " << hashSize << endl;
+
+
+    if(reportStatistics==1) {
+
+        statisticsFile << "" << ", \n";
+    }
+
+    if (hashSize - peelingCounter > v){
+        return 0; //Failure
+    }
+    else return 1;
+
+}
+
+void OBD3Tables::handleQueue(queue<int> &queueMain, unordered_set<uint64_t, Hasher> &main,
+                                               queue<int> &queueOther1, unordered_set<uint64_t, Hasher> &other1,
+                                               queue<int> &queueOther2,unordered_set<uint64_t, Hasher> &other2) {
+
+    int bucketInd;
+    for(int i=0; i < queueMain.size(); i++){
+
+        int pos = queueMain.front();
+        queueMain.pop();
+        if(main.bucket_size(pos) == 1) {
+            auto key = *main.begin(pos);
+            main.erase(key);
+//                cout << "remove key " << key << endl;
+            peelingVector[peelingCounter++] = key;
+
+            bucketInd = other1.bucket(key);
+            other1.erase(key);
+
+            if (other1.bucket_size(bucketInd) == 1)
+                queueOther1.push(bucketInd);
+
+            bucketInd = other2.bucket(key);
+            other2.erase(key);
+
+            if (other2.bucket_size(bucketInd) == 1)
+                queueOther2.push(bucketInd);
+
+        }
+    }
+}
+
+
+void OBD3Tables::generateExternalToolValues(){
+
+
+    // the rows count is the number of edges left after peeling
+    //columns count is number of vertexes and gamma bits.
+
+    auto start = high_resolution_clock::now();
+    int matrixSize = hashSize - peelingCounter;
+    GF2EMatrix matrix(matrixSize);
+
+//    cout<<"num of rows = "<<matrixSize<<endl;
+//    cout<<"num of cols = "<<3*matrixSize + gamma<<endl;
+    GF2EVector values(matrixSize);
+
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end-start).count();
+
+//    cout << "construct time in milliseconds for protocol: " << duration << endl;
+
+    unordered_map<uint64_t, int> firstTableCols;
+    unordered_map<uint64_t, int> secondTableCols;
+    unordered_map<uint64_t, int> thirdTableCols;
+
+//    cout<<"matrix:"<<endl;
+//    for (int i=0; i<first.size(); i++){
+//        for (int j=0; j<2*tableRealSize+gamma; j++){
+//            cout<<matrix[i][j]<<" ";
+//        }
+//        cout<<endl;
+//    }
+    //Get all the edges that are in the graph's circles and calc the polynomial values that should be for them.
+
+//    start = high_resolution_clock::now();
+    int rowCounter = 0;
+    int firstColsCounter = 0;
+    int secondColsCounter = 0;
+    int thirdColsCounter = 0;
+
+    int firstPos, secondPos, thirdPos;
+    for (int i=0; i<tableRealSize; i++){
+        if (first.bucket_size(i) > 1){
+            for (auto key = first.begin(i); key!= first.end(i); ++key){
+
+                matrix[rowCounter].resize(3*matrixSize+gamma);
+                if (firstTableCols.find(i) == firstTableCols.end()){
+                    firstTableCols.insert({i, firstColsCounter});
+                    firstColsCounter++;
+                }
+
+                int secondIndex = second.bucket(*key);
+                if (secondTableCols.find(secondIndex) == secondTableCols.end()){
+                    secondTableCols.insert({secondIndex, secondColsCounter});
+                    secondColsCounter++;
+
+                }
+                int thirdIndex = third.bucket(*key);
+                if (thirdTableCols.find(thirdIndex) == thirdTableCols.end()){
+                    thirdTableCols.insert({thirdIndex, thirdColsCounter});
+                    thirdColsCounter++;
+
+                }
+                firstPos = firstTableCols[i];
+                secondPos = secondTableCols[secondIndex];
+                thirdPos = thirdTableCols[thirdIndex];
+//                cout<<"key "<<*key<<" first hash val = "<<i<< "and index "<<firstTableCols[i]<<" in the first cols"<<endl;
+//                cout<<"key "<<*key<<" second hash val = "<<secondIndex<<"and index "<<secondTableCols[secondIndex]<<" in the second cols"<<endl;
+
+
+                matrix[rowCounter][firstPos] = to_GF2E(1); //put 1 in the left vertex of the edge
+                matrix[rowCounter][matrixSize + secondPos] = to_GF2E(1); //put 1 in the right vertex of the edge
+                matrix[rowCounter][2*matrixSize + thirdPos] = to_GF2E(1); //put 1 in the right vertex of the edge
+                sign[i] = 1;
+                sign[tableRealSize + secondIndex] = 1;
+                sign[2*tableRealSize + thirdIndex] = 1;
+
+                auto dhBits = getDHBits(*key);
+//                cout<<"DH bits: "<<dhBits<<endl;
+                uint64_t mask = 1;
+                for (int j=0; j<gamma; j++){
+//                    cout<<(dhBits & mask)<<" ";
+                    matrix[rowCounter][ 3*matrixSize + j] = to_GF2E(dhBits & mask); //put 1 in the right vertex of the edge
+                    dhBits = dhBits >> 1;
+
+                }
+//                cout<<endl;
+                values[rowCounter] = vals[*key];
+                rowCounter++;
+
+            }
+        }
+    }
+
+//    end = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(end-start).count();
+//
+//    cout << "fill time in milliseconds: " << duration << endl;
+
+//    cout<<"matrix:"<<endl;
+//    for (int i=0; i<rowCounter; i++){
+//        for (int j=0; j<2*rowCounter+gamma; j++){
+//            cout<<matrix[i][j]<<" ";
+//        }
+//        cout<<endl;
+//    }
+
+//    cout<<"num of equations =  "<<rowCounter<<endl;
+
+    if(reportStatistics==1) {
+
+        statisticsFile << rowCounter << ", \n";
+    }
+
+//    start = high_resolution_clock::now();
+
+    GF2EVector variablesSlim(3*matrixSize + gamma);
+    //TODO call the solver and get the results in variables
+    solve_api(matrix, values, variablesSlim, fieldSize);
+
+//    end = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(end-start).count();
+//
+//    cout << "solver time in milliseconds: " << duration << endl;
+
+//    start = high_resolution_clock::now();
+    for (int i=0; i<tableRealSize; i++) {
+        if (first.bucket_size(i) > 1) {
+            for (auto key = first.begin(i); key != first.end(i); ++key) {
+
+                int secondIndex = second.bucket(*key);
+                int thirdIndex = third.bucket(*key);
+                variables[i] = variablesSlim[firstTableCols[i]];
+                variables[tableRealSize + secondIndex] = variablesSlim[matrixSize + secondTableCols[secondIndex]];
+                variables[2*tableRealSize + thirdIndex] = variablesSlim[2*matrixSize + thirdTableCols[thirdIndex]];
+
+
+            }
+        }
+    }
+
+    for (int i=0; i<gamma; i++){
+        variables[3*tableRealSize + i] = variablesSlim[3*matrixSize + i];
+    }
+
+//    end = high_resolution_clock::now();
+//    duration = duration_cast<milliseconds>(end-start).count();
+//
+//    cout << "receive solver variables took: " << duration << endl;
+
+
+//    cout<<"variables:"<<endl;
+//    for (int i=0; i<variables.size(); i++){
+//        cout<<"variable["<<i<<"] = "<<variables[i]<<endl;
+//    }
+}
+
+
+
+
+void OBD3Tables::unpeeling(){
+//    cout<<"in unpeeling"<<endl;
+    uint64_t key;
+    byte* randomVal;
+    GF2E dhBitsVal;
+    GF2X temp;
+
+    while (peelingCounter > 0){
+//            cout<<"key = "<<key<<endl;
+        key = peelingVector[--peelingCounter];
+        auto indices = dec(key);
+//cout<<"indices = "<<endl;
+//for (int i=0; i<indices.size(); i++){
+//    cout<<indices[i]<<" ";
+//}
+//cout<<endl;
+        dhBitsVal = 0;
+        for (int j=3; j<indices.size(); j++){
+            dhBitsVal += variables[3*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+
+//            cout<<"variable in "<<indices[j]<<" place = "<<variables[2*tableRealSize+ indices[j]]<<endl;
+        }
+        if (variables[indices[0]] == 0 && sign[indices[0]] == 0){
+
+            if (variables[tableRealSize + indices[1]] == 0 && sign[tableRealSize + indices[1]] == 0){
+                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+                GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
+                variables[tableRealSize + indices[1]] = to_GF2E(temp);
+            }
+
+            if (variables[2*tableRealSize + indices[2]] == 0 && sign[2*tableRealSize + indices[2]] == 0) {
+                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+                GF2XFromBytes(temp, randomVal, fieldSizeBytes);
+                variables[2 * tableRealSize + indices[2]] = to_GF2E(temp);
+            }
+
+            variables[indices[0]] = vals[key] + variables[tableRealSize + indices[1]] + variables[2*tableRealSize + indices[2]] + dhBitsVal;
+
+//                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
+        } else if (variables[tableRealSize + indices[1]] == 0 && sign[tableRealSize + indices[1]] == 0){
+
+            if (variables[2*tableRealSize + indices[2]] == 0 && sign[2*tableRealSize + indices[2]] == 0) {
+                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+                GF2XFromBytes(temp, randomVal, fieldSizeBytes);
+                variables[2 * tableRealSize + indices[2]] = to_GF2E(temp);
+            }
+
+            variables[tableRealSize + indices[1]] = vals[key] + variables[indices[0]] + variables[2*tableRealSize + indices[2]] + dhBitsVal;
+
+        } else if  (variables[2*tableRealSize + indices[2]] == 0 && sign[2*tableRealSize + indices[2]] == 0){
+            variables[2 * tableRealSize + indices[2]] = vals[key] + variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal;
+        }
+    }
+//    cout<<"peelingCounter = "<<peelingCounter<<endl;
+
+//    cout<<"variables:"<<endl;
+//    for (int i=0; i<variables.size(); i++){
+//        cout<<"variable["<<i<<"] = "<<variables[i]<<" ";
+//    }
+//    cout<<endl;
+}
+
+bool OBD3Tables::checkOutput(){
+    uint64_t key;
+    GF2E val, dhBitsVal;
+    bool error = false;
+
+
+    for (int i=0; i<hashSize; i++){
+        key = keys[i];
+        val = vals[key];
+
+        auto indices = dec(key);
+
+        dhBitsVal = 0;
+        for (int j=3; j<indices.size(); j++){
+            dhBitsVal += variables[3*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+
+        }
+
+        if ((variables[indices[0]] + variables[tableRealSize + indices[1]] +  variables[2*tableRealSize + indices[2]] + dhBitsVal) == val) {
+//            if (i%100000 == 0)
+//                cout<<"good value!!! val = "<<val<<endl;
+        } else {//if (!hasLoop()){
+            error = true;
+            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[tableRealSize + indices[1]] + variables[2*tableRealSize + indices[2]] + dhBitsVal)<<endl;
+            cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
+            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
+            cout<<"variables["<<2*tableRealSize + indices[2]<<"] = "<<variables[2*tableRealSize + indices[2]]<<endl;
+            cout<<"dhBitsVal = "<<dhBitsVal<<endl;
+        }
+
+    }
+    if (!error){
+        cout<<"success!!!! dictionary is fine."<<endl;
+    }
+    return error;
+}
+
+bool OBD3Tables::hasLoop(){
+    for (int position = 0; position<tableRealSize; position++) {
+        if (first.bucket_size(position) > 1) {
+            return true;
+        }
+    }
+    return false;
+}
+
+StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v) : ObliviousDictionary(numItems, fieldSize, gamma, v), q(q) {
+
+    bins.resize(q+1);
+    center = q;
+
+    numItemsForBin = c2*(numItems/q);
+    cout<<"v inside bin = "<<0.5*log(numItemsForBin)<<endl;
+    for (int i=0; i<q+1; i++){
+        bins[i] = new OBD3Tables(numItemsForBin, c1, fieldSize, 40 + 0.5*log(numItemsForBin), 0.5*log(numItemsForBin));
+    }
+
+    int tableRealSize = bins[0]->getTableSize();
+
+    //the value is fixed for tests reasons
+    int binsHashSeed = 4;
+    hashForBins = Hasher(binsHashSeed);
+
+    cout << "after create sets" << endl;
+    cout << "tableRealSize = " << tableRealSize << endl;
+    cout << "hashSize = " << hashSize << endl;
+}
+
+void StarDictionary::setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values){
+    ObliviousDictionary::setKeysAndVals(keys, values);
+    keysForBins.resize(q, vector<uint64_t>(numItemsForBin));
+    int fieldSizeBytes = fieldSize % 8 == 0 ? fieldSize/8 : fieldSize/8 + 1;
+    valsForBins.resize(q, vector<byte>(numItemsForBin*fieldSizeBytes));
+    vector<int> numItemInBin(q, 0);
+
+    int size = keys.size();
+    int64_t index, indexInInnerBin;
+    for (int i=0; i<size; i++){
+        index = hashForBins(keys[i]) % q;
+        indexInInnerBin = numItemInBin[index];
+        keysForBins[index][indexInInnerBin] = keys[i];
+        memcpy(valsForBins[index].data() + indexInInnerBin*fieldSizeBytes, values.data() + i*fieldSizeBytes, fieldSizeBytes);
+        numItemInBin[index] = numItemInBin[index]+1;
+    }
+
+
+    //fill dummy values if the bin is not full
+    for (int i=0; i<q; i++){
+        indexInInnerBin = numItemInBin[i];
+        int numElementsToFill = numItemsForBin - indexInInnerBin;
+        prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
+        prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
+
+        //set the keys and values of the bin
+        //TODO no need to set values here
+        bins[i]->setKeysAndVals(keysForBins[i], valsForBins[i]);
+    }
+
+}
+
+void StarDictionary::init() {
+
+    ObliviousDictionary::init();
+    for (int i=0; i<q; i++){
+        bins[i]->init();
+        bins[i]->fillTables();
+    }
+}
+
+vector<uint64_t> StarDictionary::dec(uint64_t key){
+
+    int binIndex = hashForBins(key) % q;
+    auto indices = bins[binIndex]->dec(key);
+
+    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
+
+
+    auto centerIndices = bins[center]->dec(key);
+//    indices.insert(indices.end(), centerIndices.begin(), centerIndices.end());
+
+    vector<uint64_t> newIndices(indices.size() + centerIndices.size()); //Will hold the indices of the big array
+
+    for (int i=0; i<indices.size(); i++){
+        int startIndex = binIndex*numItemsForBin;
+        newIndices[i] = startIndex + indices[i];
+        cout<<"index = "<<indices[i]<<" newIndex = "<<newIndices[i]<<endl;
+    }
+
+    for (int i=0; i<centerIndices.size(); i++){
+        int startIndex = center*numItemsForBin;
+        newIndices[indices.size() + i] = startIndex + centerIndices[i];
+        cout<<"center index = "<<centerIndices[i]<<" newIndex = "<<newIndices[indices.size() + i]<<endl;
+    }
+    return newIndices;
+}
+
+vector<byte> StarDictionary::decode(uint64_t key){
+    int index = hashForBins(key) % q;
+
+    vector<byte> first = bins[index]->decode(key);
+    vector<byte> second = bins[center]->decode(key);
+
+
+    for (int i=0; i<first.size(); i++){
+        first[i] ^= second[i];
+    }
+
+    return first;
+}
+
+void StarDictionary::encode() {
+
+
+    auto start = high_resolution_clock::now();
+    int succeed, failureIndex = -1;
+
+    for (int i=0; i<q; i++){
+        succeed = bins[i]->peeling();
+        if (!succeed) {
+            failureIndex = i;
+        }
+    }
+
+    auto end = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(end-start).count();
+    cout << "time in milliseconds for peel all bins: " << duration << endl;
+
+    start = high_resolution_clock::now();
+    if (failureIndex == -1){
+        bins[center]->generateRandomEncoding();
+        cout<<"no failure. generate random values for center"<<endl;
+
+    } else {
+        cout<<"failure in bin number "<<failureIndex<<". generate random values for center"<<endl;
+        bins[failureIndex]->generateRandomEncoding();
+        vector<byte> valsForCenter(numItemsForBin*fieldSizeBytes);
+
+        for (int i=0; i<numItemsForBin; i++){
+            auto binVal = bins[failureIndex]->decode(keysForBins[failureIndex][i]);
+
+            for (int j=0; j<fieldSizeBytes; j++){
+                valsForCenter[i*fieldSizeBytes + j] = binVal[j]^valsForBins[failureIndex][i*fieldSizeBytes + j];
+            }
+        }
+
+        bins[center]->setKeysAndVals(keysForBins[failureIndex], valsForCenter);
+        bins[center]->init();
+        bins[center]->fillTables();
+        bins[center]->peeling();
+        bins[center]->generateExternalToolValues();
+        bins[center]->unpeeling();
+    }
+
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end-start).count();
+    cout << "time in milliseconds for generate center values: " << duration << endl;
+
+    start = high_resolution_clock::now();
+    vector<byte> centerValues = bins[center]->getVariables();
+
+    for (int i=0; i<q; i++){
+        if (i != failureIndex){
+
+            for (int j=0; j<numItemsForBin; j++){
+                auto binVal = bins[center]->decode(keysForBins[i][j]);
+
+                for (int k=0; k<fieldSizeBytes; k++){
+                    valsForBins[i][j*fieldSizeBytes + k] = binVal[k]^valsForBins[i][j*fieldSizeBytes + k];
+                }
+            }
+
+            bins[i]->setKeysAndVals(keysForBins[i], valsForBins[i]);
+            bins[i]->generateExternalToolValues();
+            bins[i]->unpeeling();
+        }
+    }
+
+
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end-start).count();
+    cout << "time in milliseconds for unpeel all bins: " << duration << endl;
+
+}
+
+
+bool StarDictionary::checkOutput(){
+    uint64_t key;
+    GF2X temp;
+    GF2E val, decVal;
+    bool error = false;
+
+
+    for (int i=0; i<hashSize; i++){
+        key = keys[i];
+        val = vals[key];
+
+        auto decValBytes = decode(key);
+        GF2XFromBytes(temp, decValBytes.data(), fieldSizeBytes);
+        decVal = to_GF2E(temp);
+        if (decVal == val) {
+//            if (i%100000 == 0)
+//                cout<<"good value!!! val = "<<val<<endl;
+        } else {//if (!hasLoop()){
+            error = true;
+            cout<<"invalid value :( val = "<<val<<" wrong val = "<<decVal<<endl;
+        }
+
+    }
+    if (!error){
+        cout<<"success!!!! dictionary is fine."<<endl;
+    }
+    return error;
+}
+
+vector<byte> StarDictionary::getVariables()  {
+
+    int innerSize = bins[0]->getTableSize() + gamma;
+    vector<byte> variables((q+1)*innerSize*fieldSizeBytes);
+    for (int i=0; i<q+1; i++){
+        auto binVariables = bins[i]->getVariables();
+        memcpy(variables.data() + i*innerSize*fieldSizeBytes, binVariables.data(), innerSize*fieldSizeBytes);
+    }
+    return variables;
 }

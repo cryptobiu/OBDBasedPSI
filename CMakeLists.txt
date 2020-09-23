@@ -3,8 +3,9 @@ project(OBDBasedPSI)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -msse4.2")
-INCLUDE_DIRECTORIES($ENV{HOME} $ENV{HOME}/PaXoS_PSI $ENV{HOME}/PaXoS_PSI/libOTe
-        $ENV{HOME}/PaXoS_PSI/libOTe/cryptoTools
+INCLUDE_DIRECTORIES($ENV{HOME} $ENV{HOME}/PaXoS_PSI
+        #$ENV{HOME}/PaXoS_PSI/libOTe
+        #$ENV{HOME}/PaXoS_PSI/libOTe/cryptoTools
         $ENV{HOME}/libscapi/install/include xxHash)
 
 link_directories(/usr/ssl/lib/ $ENV{HOME}/PaXoS_PSI/lib $ENV{HOME}/PaXoS_PSI/libOTe/lib
@@ -23,7 +24,7 @@ add_executable(OBDBasedPSI ${SOURCE_FILES})
 #endif()
 
 TARGET_LINK_LIBRARIES(OBDBasedPSI ntl.a libxxhash.so givaro blas linbox iml libntl.a
-        $ENV{HOME}/PaXoS_PSI/libOTe/lib/liblibOTe.a liblibPSI.a
-        $ENV{HOME}/PaXoS_PSI/libOTe/lib/libcryptoTools.a
+        #$ENV{HOME}/PaXoS_PSI/libOTe/lib/liblibOTe.a liblibPSI.a
+       # $ENV{HOME}/PaXoS_PSI/libOTe/lib/libcryptoTools.a
         $ENV{HOME}/libscapi/libscapi.a gmp
-        libboost_system.a pthread crypto dl)
+        boost_system pthread crypto dl)

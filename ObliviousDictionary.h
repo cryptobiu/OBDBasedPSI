@@ -76,7 +76,7 @@ public:
 
     virtual vector<byte> decode(uint64_t key) = 0;
 
-    virtual void encode() = 0;
+    virtual bool encode() = 0;
 
     void generateRandomEncoding() {
 
@@ -147,7 +147,7 @@ public:
 
     virtual void createSets() = 0;
 
-    void encode() override;
+    bool encode() override;
 
     virtual void fillTables() = 0;
 
@@ -261,7 +261,7 @@ public:
 
     vector<byte> decode(uint64_t key);
 
-    void encode() override;
+    bool encode() override;
 
     bool checkOutput() override;
 
@@ -272,9 +272,9 @@ public:
     vector<byte> getVariables() override;
 
 
+    void peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId);
 
-
-
+    void unpeelMultipleBinsThread(int start, int end, int failureIndex);
 };
 
 

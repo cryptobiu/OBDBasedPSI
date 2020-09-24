@@ -96,6 +96,7 @@ public:
         }};
 
     virtual vector<byte> getVariables() {
+        cout<<"variables.size() = "<<variables.size()<<endl;
         if (sigma.size() == 0) { //If the variables do not randomly chosen
             sigma.resize(variables.size() * fieldSizeBytes);
             for (int i = 0; i < variables.size(); i++) {
@@ -141,6 +142,10 @@ public:
         //the value is fixed for tests reasons
         dhSeed = 3;
         DH = Hasher(dhSeed);
+
+        prg = PrgFromOpenSSLAES(hashSize*fieldSizeBytes*4);
+        auto key = prg.generateKey(128);
+        prg.setKey(key);
     }
 
     void init() override;

@@ -101,11 +101,11 @@ private :
     vector<byte> createDictionary();
 
     void runOOS(vector<byte> & sigma);
-//
-//    void computeXors();
+
+    void computeXors();
     void checkVariables(vector<byte> & variables);
 
-//    void receiveSenderXors();
+    void receiveSenderXors();
 public:
 
     Receiver(int argc, char *argv[]);
@@ -124,9 +124,9 @@ private :
 
     void runOOS();
 
-//    void computeXors();
-//
-//    void sendXors();
+    void computeXors();
+
+    void sendXors();
 public:
 
     Sender(int argc, char *argv[]);

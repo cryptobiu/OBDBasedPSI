@@ -22,6 +22,7 @@ ProtocolParty::ProtocolParty(int argc, char* argv[]) : Protocol("PSI", argc, arg
 
     auto c2 = stof(this->getParser().getValueByKey(arguments, "c2"));
     auto c1 = stof(this->getParser().getValueByKey(arguments, "c1"));
+    cout<<"c2 = "<<c2<<" c1 = "<<c1<<endl;
     auto q = stoi(this->getParser().getValueByKey(arguments, "q"));
     auto numThreads = stoi(this->getParser().getValueByKey(arguments, "numThreads"));
 
@@ -91,7 +92,7 @@ cout<<"malicious = "<<isMalicious<<endl;
 
     hashSize = dic->getHashSize();
     tableRealSize = dic->getTableSize();
-    numOTs = tableRealSize*2.4 + gamma;
+    numOTs = tableRealSize + gamma;
     cout<<"after create dictionary. hashSize = "<<hashSize<<endl;
     cout<<"after create dictionary. tableRealSize = "<<tableRealSize<<endl;
     keys.resize(hashSize);
@@ -99,8 +100,11 @@ cout<<"malicious = "<<isMalicious<<endl;
 
 
     //    auto key = prg.generateKey(128);
+    cout<<"before prg"<<endl;
     prg = PrgFromOpenSSLAES(hashSize*fieldSizeBytes*2);
+    cout<<"after prg"<<endl;
     vector<byte> seed(128, 0);
+
     SecretKey key(seed, "");
     prg.setKey(key);
 
@@ -184,7 +188,7 @@ void Receiver::runOnline() {
     t1 = high_resolution_clock::now();
 
     timer->startSubTask("OT", iteration);
-    //runOOS(sigma);
+    runOOS(sigma);
     timer->endSubTask("OT", iteration);
     t2 = high_resolution_clock::now();
 
@@ -194,7 +198,7 @@ void Receiver::runOnline() {
 
     t1 = high_resolution_clock::now();
     timer->startSubTask("ComputeXors", iteration);
-//    computeXors();
+    computeXors();
     timer->endSubTask("ComputeXors", iteration);
     t2 = high_resolution_clock::now();
 
@@ -203,7 +207,7 @@ void Receiver::runOnline() {
 
     t1 = high_resolution_clock::now();
     timer->startSubTask("ReceiveAndCalc", iteration);
-//    receiveSenderXors();
+    receiveSenderXors();
     timer->endSubTask("ReceiveAndCalc", iteration);
     t2 = high_resolution_clock::now();
 
@@ -394,79 +398,77 @@ void Receiver::runOOS(vector<byte> & sigma){
     }
 }
 
-//void Receiver::computeXors(){
-//
-//    u64 baseCount = recv.getBaseOTCount();
-//    int blockSize = baseCount/128;
-//
-//    vector<block> output(blockSize);
-//    vector<byte> temp(blockSize*16);
-//    int size;
-//
-//    xorsSet = unordered_set<uint64_t>(hashSize);
-//
-////    cout<<"baseCount = "<<baseCount<<endl;
-////    cout<<"Xors:"<<endl;
-//    for (int i=0; i<hashSize; i++){
-//
-//        auto indices = dic->dec(keys[i]);
-//
-//        for (int j=0; j<blockSize; j++) {
-//            output[j] = _mm_xor_si128(*(recv.mT0.data(indices[0]) + j),*(recv.mT0.data(tableRealSize + indices[1]) + j));
-//        }
-//
-//        for (int k=2; k<indices.size(); k++) {
-//            for (int j = 0; j < blockSize; j++) {
-//                output[j] = _mm_xor_si128(output[j], *(recv.mT0.data(2*tableRealSize + indices[k]) + j));
-//            }
-//        }
-//
-//
-//        EVP_EncryptUpdate(aes, temp.data(), &size, (byte*)output.data(), blockSize*16);
-////cout<<"size = "<<size<<endl;
-//        xorsSet.insert(((uint64_t*)temp.data())[0]);
-//
-////        for (int j=0; j<20;j++){
-////            cout<<(int)(((byte*)output.data())[j])<<" ";
-////        }
-////        cout<<endl;
-////        cout<<((uint64_t*)temp.data())[0]<<endl;
-//
-//    }
-//
-//
-//}
-//
-//void Receiver::receiveSenderXors(){
-//
-//    uint64_t size;
-//    otherParty->getChannel()->read((byte*)&size, 8);
-//
-//
-//    vector<uint64_t> senderOutputs(size);
-//    otherParty->getChannel()->read((byte*)senderOutputs.data(), size*8);
-//
-////    for (int i=0; i<size/blockSize; i++) {
-////        for (int j=0; j<20; j++) {
-////            cout<<(int)(((byte*)(senderOutputs.data() + i*blockSize))[j])<< " ";
-////        }
-////        cout<<endl;
-////    }
-//
-//    uint64_t count = 0;
-//    for (int i=0; i<hashSize; i++){
-//        if (xorsSet.find(senderOutputs[i]) != xorsSet.end()){
-//            count++;
-////            cout<<"element "<<i<<" is in the intersection"<<endl;
-//        }
-//    }
-//
-//    cout<<"found "<<count<<" matches"<<endl;
-//
-//
-//}
+void Receiver::computeXors(){
+
+    u64 baseCount = recv.getBaseOTCount();
+    int blockSize = baseCount/128;
+
+    vector<block> output(blockSize);
+    vector<byte> temp(blockSize*16);
+    int size;
+
+    xorsSet = unordered_set<uint64_t>(hashSize);
+
+//    cout<<"baseCount = "<<baseCount<<endl;
+//    cout<<"Xors:"<<endl;
+    for (int i=0; i<hashSize; i++){
+
+        auto indices = dic->dec(keys[i]);
+
+        for (int j=0; j<blockSize; j++) {
+            output[j] = _mm_xor_si128(*(recv.mT0.data(indices[0]) + j),*(recv.mT0.data(indices[1]) + j));
+        }
+
+        for (int k=2; k<indices.size(); k++) {
+            for (int j = 0; j < blockSize; j++) {
+                output[j] = _mm_xor_si128(output[j], *(recv.mT0.data(indices[k]) + j));
+            }
+        }
 
 
+        EVP_EncryptUpdate(aes, temp.data(), &size, (byte*)output.data(), blockSize*16);
+//cout<<"size = "<<size<<endl;
+        xorsSet.insert(((uint64_t*)temp.data())[0]);
+
+//        for (int j=0; j<20;j++){
+//            cout<<(int)(((byte*)output.data())[j])<<" ";
+//        }
+//        cout<<endl;
+//        cout<<((uint64_t*)temp.data())[0]<<endl;
+
+    }
+
+
+}
+
+void Receiver::receiveSenderXors(){
+
+    uint64_t size;
+    otherParty->getChannel()->read((byte*)&size, 8);
+
+
+    vector<uint64_t> senderOutputs(size);
+    otherParty->getChannel()->read((byte*)senderOutputs.data(), size*8);
+
+//    for (int i=0; i<size/blockSize; i++) {
+//        for (int j=0; j<20; j++) {
+//            cout<<(int)(((byte*)(senderOutputs.data() + i*blockSize))[j])<< " ";
+//        }
+//        cout<<endl;
+//    }
+
+    uint64_t count = 0;
+    for (int i=0; i<hashSize; i++){
+        if (xorsSet.find(senderOutputs[i]) != xorsSet.end()){
+            count++;
+//            cout<<"element "<<i<<" is in the intersection"<<endl;
+        }
+    }
+
+    cout<<"found "<<count<<" matches"<<endl;
+
+
+}
 
 void Receiver::checkVariables(vector<byte> & variables){
 
@@ -516,7 +518,7 @@ void Sender::runOnline() {
     auto start = high_resolution_clock::now();
     auto t1 = high_resolution_clock::now();
 
-    //runOOS();
+    runOOS();
     auto t2 = high_resolution_clock::now();
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
@@ -524,7 +526,7 @@ void Sender::runOnline() {
 
     t1 = high_resolution_clock::now();
 
-//    computeXors();
+    computeXors();
     t2 = high_resolution_clock::now();
 
     duration = duration_cast<milliseconds>(t2-t1).count();
@@ -532,7 +534,7 @@ void Sender::runOnline() {
 
     t1 = high_resolution_clock::now();
 
-//    sendXors();
+    sendXors();
     t2 = high_resolution_clock::now();
 
     duration = duration_cast<milliseconds>(t2-t1).count();
@@ -541,8 +543,6 @@ void Sender::runOnline() {
 
     duration = duration_cast<milliseconds>(end-start).count();
     cout << "all protocol took in milliseconds: " << duration << endl;
-
-
 
 }
 
@@ -627,70 +627,70 @@ void Sender::runOOS(){
 
 }
 
-//void Sender::computeXors(){
-//
-//    u64 baseCount = sender.getBaseOTCount();
-////cout << "baseCount " << baseCount << endl;
-//    int blockSize = baseCount/128;
-//  //cout << "blocksize " << blockSize << endl;
-//    vector<block> output(blockSize);
-//
-////cout <<"before resize" << endl;
-//    xors.resize(hashSize);
-//    //cout << "after resize" << endl;
-//
-//    vector<byte> temp(blockSize*16);
-//  //  cout << "created temp" <<endl;
-//    int size;
-//
-//    for (int i=0; i<hashSize; i++){
-//
-//        auto indices = dic->dec(keys[i]);
-//
-//        for (int j=0; j<blockSize; j++) {
-//            output[j] = _mm_xor_si128(*(sender.mT.data(indices[0]) + j),*(sender.mT.data(tableRealSize + indices[1]) + j));
+void Sender::computeXors(){
+
+    u64 baseCount = sender.getBaseOTCount();
+//cout << "baseCount " << baseCount << endl;
+    int blockSize = baseCount/128;
+  //cout << "blocksize " << blockSize << endl;
+    vector<block> output(blockSize);
+
+//cout <<"before resize" << endl;
+    xors.resize(hashSize);
+    //cout << "after resize" << endl;
+
+    vector<byte> temp(blockSize*16);
+  //  cout << "created temp" <<endl;
+    int size;
+
+    for (int i=0; i<hashSize; i++){
+
+        auto indices = dic->dec(keys[i]);
+
+        for (int j=0; j<blockSize; j++) {
+            output[j] = _mm_xor_si128(*(sender.mT.data(indices[0]) + j),*(sender.mT.data(indices[1]) + j));
+        }
+
+        for (int k=2; k<indices.size(); k++) {
+            for (int j = 0; j < blockSize; j++) {
+                output[j] = _mm_xor_si128(output[j], *(sender.mT.data(indices[k]) + j));
+            }
+        }
+
+        std::array<block, 10> codeword = { ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock };
+        memcpy(codeword.data(), vals.data() + i*fieldSizeBytes, fieldSizeBytes);
+        code.encode((u8*)codeword.data(), (u8*)codeword.data());
+
+        for (int j = 0; j < blockSize; j++) {
+            codeword[j] = _mm_and_si128(codeword[j], ((block*)baseChoice.data())[j]);
+        }
+
+        for (int j=0; j<blockSize; j++) {
+            output[j] = _mm_xor_si128(output[j], codeword[j]);
+        }
+
+//	cout << "before EVP" << endl;
+
+        EVP_EncryptUpdate(aes, temp.data(), &size, (byte*)output.data(), blockSize*16);
+
+        xors[i] = ((uint64_t*)temp.data())[0];
+//        for (int j=0; j<20;j++){
+//            cout<<(int)(((byte*)output.data())[j])<<" ";
 //        }
+//        cout<<endl;
 //
-//        for (int k=2; k<indices.size(); k++) {
-//            for (int j = 0; j < blockSize; j++) {
-//                output[j] = _mm_xor_si128(output[j], *(sender.mT.data(2*tableRealSize + indices[k]) + j));
-//            }
-//        }
-//
-//        std::array<block, 10> codeword = { ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock };
-//        memcpy(codeword.data(), vals.data() + i*fieldSizeBytes, fieldSizeBytes);
-//        code.encode((u8*)codeword.data(), (u8*)codeword.data());
-//
-//        for (int j = 0; j < blockSize; j++) {
-//            codeword[j] = _mm_and_si128(codeword[j], ((block*)baseChoice.data())[j]);
-//        }
-//
-//        for (int j=0; j<blockSize; j++) {
-//            output[j] = _mm_xor_si128(output[j], codeword[j]);
-//        }
-//
-////	cout << "before EVP" << endl;
-//
-//        EVP_EncryptUpdate(aes, temp.data(), &size, (byte*)output.data(), blockSize*16);
-//
-//        xors[i] = ((uint64_t*)temp.data())[0];
-////        for (int j=0; j<20;j++){
-////            cout<<(int)(((byte*)output.data())[j])<<" ";
-////        }
-////        cout<<endl;
-////
-////        cout<<xors[i]<<endl;
-//    }
-//
-//
-//}
-//
-//void Sender::sendXors(){
-//
-//    int64_t size = xors.size();
-//
-//    otherParty->getChannel()->write((byte*)&size, 8);
-//    otherParty->getChannel()->write((byte*)xors.data(), size*8);
-//}
+//        cout<<xors[i]<<endl;
+    }
+
+
+}
+
+void Sender::sendXors(){
+
+    int64_t size = xors.size();
+
+    otherParty->getChannel()->write((byte*)&size, 8);
+    otherParty->getChannel()->write((byte*)xors.data(), size*8);
+}
 
 

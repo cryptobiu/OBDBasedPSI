@@ -586,9 +586,6 @@ OBD3Tables::OBD3Tables(int hashSize, double c1, int fieldSize, int gamma, int v)
 //    cout << "time in milliseconds for create sets: " << duration << endl;
 //
 //
-//        cout << "after create sets" << endl;
-//        cout << "tableRealSize = " << tableRealSize << endl;
-//        cout << "hashSize = " << hashSize << endl;
 
     variables.resize(3*tableRealSize + gamma, to_GF2E(0));
     sign.resize(3*tableRealSize, 0);
@@ -1205,7 +1202,7 @@ vector<uint64_t> StarDictionary::dec(uint64_t key){
     int innerIndicesSize = bins[0]->getTableSize() + gamma;
     auto indices = bins[binIndex]->dec(key);
 
-    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
+//    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
 
 
     auto centerIndices = bins[center]->dec(key);
@@ -1216,13 +1213,13 @@ vector<uint64_t> StarDictionary::dec(uint64_t key){
     for (int i=0; i<indices.size(); i++){
         int startIndex = binIndex*innerIndicesSize;
         newIndices[i] = startIndex + indices[i];
-        cout<<"index = "<<indices[i]<<" newIndex = "<<newIndices[i]<<endl;
+//        cout<<"index = "<<indices[i]<<" newIndex = "<<newIndices[i]<<endl;
     }
 
     for (int i=0; i<centerIndices.size(); i++){
         int startIndex = center*innerIndicesSize;
         newIndices[indices.size() + i] = startIndex + centerIndices[i];
-        cout<<"center index = "<<centerIndices[i]<<" newIndex = "<<newIndices[indices.size() + i]<<endl;
+//        cout<<"center index = "<<centerIndices[i]<<" newIndex = "<<newIndices[indices.size() + i]<<endl;
     }
     return newIndices;
 }
@@ -1409,11 +1406,14 @@ bool StarDictionary::checkOutput(){
 
 vector<byte> StarDictionary::getVariables()  {
 
-    int innerSize = bins[0]->getTableSize() + gamma;
-    vector<byte> variables((q+1)*innerSize*fieldSizeBytes);
-    for (int i=0; i<q+1; i++){
-        auto binVariables = bins[i]->getVariables();
-        memcpy(variables.data() + i*innerSize*fieldSizeBytes, binVariables.data(), innerSize*fieldSizeBytes);
+    auto binVariables = bins[0]->getVariables();
+    int innerSize = binVariables.size();
+    vector<byte> variables((q+1)*innerSize);
+    memcpy(variables.data(), binVariables.data(), innerSize);
+
+    for (int i=1; i<q+1; i++){
+        binVariables = bins[i]->getVariables();
+
     }
     return variables;
 }

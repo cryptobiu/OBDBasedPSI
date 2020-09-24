@@ -57,9 +57,32 @@ public:
     }
 
     virtual void setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values){
+
          this->keys = keys;
          this->values = values;
 
+         vals.clear();
+         vals.reserve(hashSize);
+         GF2X temp;
+         for (int i=0; i < hashSize; i++){
+
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<"val in bytes = "<<(int)(values[i*fieldSizeBytes + j]) << " ";
+//        }
+//        cout<<endl;
+
+             GF2XFromBytes(temp, values.data() + i*fieldSizeBytes ,fieldSizeBytes);
+             vals.insert({keys[i], to_GF2E(temp)});
+//        auto tempval = to_GF2E(temp);
+//        cout<<"val in GF2E = "<<tempval<<endl;
+
+//        vector<byte> tempvec(fieldSizeBytes);
+//        BytesFromGF2X(tempvec.data(), rep(tempval), fieldSizeBytes);
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<"returned val in bytes = "<<(int)*(tempvec.data() + j)<< " ";
+//        }
+//        cout<<endl;
+         }
 //        for (int i=0; i<hashSize; i++){
 //            cout << "key = " << keys[i] << " val = ";
 //
@@ -70,7 +93,7 @@ public:
 //        }
      }
 
-    virtual void init();
+    virtual void init() = 0;
 
     virtual vector<uint64_t> dec(uint64_t key) = 0;
 
@@ -79,10 +102,27 @@ public:
     virtual bool encode() = 0;
 
     void generateRandomEncoding() {
+cout<<"variables.size() = "<<variables.size()<<endl;
+cout<<"fieldSizeBytes = "<<fieldSizeBytes<<endl;
 
         sigma.resize(variables.size()*fieldSizeBytes);
         prg.getPRGBytes(sigma, 0, sigma.size());
 
+        GF2X temp;
+        for (int i=0; i < variables.size(); i++){
+
+            GF2XFromBytes(temp, sigma.data() + i*fieldSizeBytes ,fieldSizeBytes);
+            variables[i] = to_GF2E(temp);
+//        auto tempval = to_GF2E(temp);
+//        cout<<"val in GF2E = "<<tempval<<endl;
+
+//        vector<byte> tempvec(fieldSizeBytes);
+//        BytesFromGF2X(tempvec.data(), rep(tempval), fieldSizeBytes);
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<"returned val in bytes = "<<(int)*(tempvec.data() + j)<< " ";
+//        }
+//        cout<<endl;
+        }
 
     }
 
@@ -96,7 +136,8 @@ public:
         }};
 
     virtual vector<byte> getVariables() {
-        if (sigma.size() == 0) { //If the variables do not randomly chosen
+
+//        if (sigma.size() == 0) { //If the variables do not randomly chosen
             sigma.resize(variables.size() * fieldSizeBytes);
             for (int i = 0; i < variables.size(); i++) {
                 //            cout<<"variables["<<i<<"] = "<<variables[i]<<endl;
@@ -106,7 +147,25 @@ public:
                 //            }
                 //            cout<<endl;
             }
-        }
+//        } else {
+//            vector< byte> temp(variables.size() * fieldSizeBytes);
+//            for (int i = 0; i < variables.size(); i++) {
+//                //            cout<<"variables["<<i<<"] = "<<variables[i]<<endl;
+//                BytesFromGF2X(temp.data() + i * fieldSizeBytes, rep(variables[i]), fieldSizeBytes);
+//                //            for (int j=0; j<fieldSizeBytes; j++){
+//                //                cout<<(int)*(sigma.data() + i*fieldSizeBytes + j)<< " ";
+//                //            }
+//                //            cout<<endl;
+//            }
+//            bool error = false;
+//            for (int i=0; i<sigma.size(); i++){
+//                if (sigma[i] != temp[i]){
+//                    error = true;
+//                }
+//            }
+//            if (error)
+//                cout<<"values have been changed!"<<endl;
+//        }
 
         return sigma;
     }
@@ -139,7 +198,7 @@ public:
 
     OBDTables(int hashSize, int fieldSize, int gamma, int v) : ObliviousDictionary(hashSize, fieldSize, gamma, v){
         //the value is fixed for tests reasons
-        dhSeed = 3;
+        dhSeed = 5;
         DH = Hasher(dhSeed);
 
         prg = PrgFromOpenSSLAES(hashSize*fieldSizeBytes*4);
@@ -275,7 +334,7 @@ public:
     }
 
     vector<byte> getVariables() override;
-
+    bool checkOutput(uint64_t key, int valIndex);
 
     void peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId);
 

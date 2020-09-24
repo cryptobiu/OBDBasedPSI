@@ -180,6 +180,8 @@ void Receiver::runOnline() {
 
     timer->startSubTask("CreateDictionary", iteration);
     auto sigma = createDictionary();
+
+    cout<<"variables size = "<<sigma.size()/fieldSizeBytes<<endl;
     timer->endSubTask("CreateDictionary", iteration);
     auto t2 = high_resolution_clock::now();
 
@@ -477,8 +479,10 @@ void Receiver::checkVariables(vector<byte> & variables){
 cout<<"in check"<<endl;
     bool error = false;
     vector<byte> check(fieldSizeBytes);
+    cout<<"variables size = "<<variables.size()/fieldSizeBytes<<endl;
     for (int i=0; i<hashSize; i++){
 
+//        ((StarDictionary*)dic)->checkOutput(keys[i], i);
 //        auto check = dic->decode(keys[i]);
         auto indices = dic->dec(keys[i]);
 
@@ -496,7 +500,7 @@ cout<<"in check"<<endl;
         for (int j=0; j<fieldSizeBytes; j++) {
             if (check[j] != vals[i*fieldSizeBytes + j]){
                 error = true;
-                cout<<"error in check! xor of D values is not equal to val"<<endl;
+//                cout<<"error in check! xor of D values is not equal to val"<<endl;
             }
         }
 
@@ -504,6 +508,8 @@ cout<<"in check"<<endl;
 
     if (error ==  false){
         cout<<"success!!! all D values equal to val"<<endl;
+    } else {
+        cout<<"error in check!"<<endl;
     }
 
 }

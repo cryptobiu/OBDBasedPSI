@@ -39,45 +39,8 @@ uint64_t OBDTables::getDHBits(uint64_t key){
     return bits >> (64-gamma);
 }
 
-void ObliviousDictionary::init() {
-
-    vals.clear();
-    vals.reserve(hashSize);
-
-    GF2X temp;
-    for (int i=0; i < hashSize; i++){
-
-//        for (int j=0; j<fieldSizeBytes; j++){
-//            cout<<"val in bytes = "<<(int)(values[i*fieldSizeBytes + j]) << " ";
-//        }
-//        cout<<endl;
-
-        GF2XFromBytes(temp, values.data() + i*fieldSizeBytes ,fieldSizeBytes);
-        vals.insert({keys[i], to_GF2E(temp)});
-//        auto tempval = to_GF2E(temp);
-//        cout<<"val in GF2E = "<<tempval<<endl;
-
-//        vector<byte> tempvec(fieldSizeBytes);
-//        BytesFromGF2X(tempvec.data(), rep(tempval), fieldSizeBytes);
-//        for (int j=0; j<fieldSizeBytes; j++){
-//            cout<<"returned val in bytes = "<<(int)*(tempvec.data() + j)<< " ";
-//        }
-//        cout<<endl;
-    }
-
-//    int numKeysToCheck = 10;
-//    cout<<"keys to check with the other party"<<endl;
-//    for (int i=0; i<numKeysToCheck; i++){
-//        cout << "key = " << keys[i] << " val = " << vals[keys[i]] << endl;
-//    }
-
-//    first.clear();
-//    second.clear();
-}
-
 void OBDTables::init() {
 
-    ObliviousDictionary::init();
     peelingVector.clear();
     peelingCounter = 0;
 }
@@ -185,14 +148,10 @@ vector<byte> OBD2Tables::decode(uint64_t key){
     auto indices = dec(key);
 
     GF2E val(0);
-    for (int j=2; j<indices.size(); j++){
+    for (int j=0; j<indices.size(); j++){
         val += variables[indices[j]]; //put 1 in the right vertex of the edge
 
     }
-
-    val += variables[indices[0]];
-    val += variables[indices[1]];
-
     vector<byte> valBytes(fieldSizeBytes);
     BytesFromGF2X(valBytes.data(), rep(val), fieldSizeBytes);
 
@@ -657,14 +616,10 @@ vector<byte> OBD3Tables::decode(uint64_t key){
     auto indices = dec(key);
 
     GF2E val(0);
-    for (int j=3; j<indices.size(); j++){
+    for (int j=0; j<indices.size(); j++){
         val += variables[indices[j]]; //put 1 in the right vertex of the edge
 
     }
-
-    val += variables[indices[0]];
-    val += variables[indices[1]];
-    val += variables[indices[2]];
 
     vector<byte> valBytes(fieldSizeBytes);
     BytesFromGF2X(valBytes.data(), rep(val), fieldSizeBytes);
@@ -1194,7 +1149,6 @@ void StarDictionary::setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values
 
 void StarDictionary::init() {
 
-    ObliviousDictionary::init();
     for (int i=0; i<q; i++){
         bins[i]->init();
         bins[i]->fillTables();
@@ -1205,9 +1159,9 @@ vector<uint64_t> StarDictionary::dec(uint64_t key){
 
     int binIndex = hashForBins(key) % q;
     int innerIndicesSize = bins[0]->getTableSize() + gamma;
-    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
-    cout<<"gamma = "<<gamma<<endl;
-    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
+//    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
+//    cout<<"gamma = "<<gamma<<endl;
+//    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
     auto indices = bins[binIndex]->dec(key);
 
 //    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
@@ -1293,6 +1247,7 @@ bool StarDictionary::encode() {
     cout << "time in milliseconds for peel all bins: " << duration << endl;
 
     start = high_resolution_clock::now();
+    cout<<"failure index = "<<failureIndex<<endl;
     if (failureIndex == -1){//all bins have peeled succesfully
         bins[center]->generateRandomEncoding();
         cout<<"no failure. generate random values for center"<<endl;
@@ -1300,6 +1255,7 @@ bool StarDictionary::encode() {
     } else if (failureIndex > -1){//one bin has failed
         cout<<"failure in bin number "<<failureIndex<<". generate random values for center"<<endl;
         bins[failureIndex]->generateRandomEncoding();
+
         vector<byte> valsForCenter(numItemsForBin*fieldSizeBytes);
 
         for (int i=0; i<numItemsForBin; i++){
@@ -1329,6 +1285,22 @@ bool StarDictionary::encode() {
     vector<byte> centerValues = bins[center]->getVariables();
 
 
+    for (int i=0; i < q; i++){
+        if (i != failureIndex){
+
+            for (int j=0; j < numItemsForBin; j++){
+                auto binVal = bins[center]->decode(keysForBins[i][j]);
+
+                for (int k=0; k < fieldSizeBytes; k++){
+                    valsForBins[i][j * fieldSizeBytes + k] = binVal[k] ^ valsForBins[i][j * fieldSizeBytes + k];
+                }
+            }
+
+            bins[i]->setKeysAndVals(keysForBins[i], valsForBins[i]);
+//            bins[i]->generateExternalToolValues();
+//            bins[i]->unpeeling();
+        }
+    }
     for (int t=0; t<numThreads; t++) {
 
         if ((t + 1) * sizeForEachThread <= q) {
@@ -1352,15 +1324,15 @@ void StarDictionary::unpeelMultipleBinsThread(int start, int end, int failureInd
     for (int i=start; i < end; i++){
         if (i != failureIndex){
 
-            for (int j=0; j < numItemsForBin; j++){
-                auto binVal = bins[center]->decode(keysForBins[i][j]);
-
-                for (int k=0; k < fieldSizeBytes; k++){
-                    valsForBins[i][j * fieldSizeBytes + k] = binVal[k] ^ valsForBins[i][j * fieldSizeBytes + k];
-                }
-            }
-
-            bins[i]->setKeysAndVals(keysForBins[i], valsForBins[i]);
+//            for (int j=0; j < numItemsForBin; j++){
+//                auto binVal = bins[center]->decode(keysForBins[i][j]);
+//
+//                for (int k=0; k < fieldSizeBytes; k++){
+//                    valsForBins[i][j * fieldSizeBytes + k] = binVal[k] ^ valsForBins[i][j * fieldSizeBytes + k];
+//                }
+//            }
+//
+//            bins[i]->setKeysAndVals(keysForBins[i], valsForBins[i]);
             bins[i]->generateExternalToolValues();
             bins[i]->unpeeling();
         }
@@ -1402,10 +1374,81 @@ bool StarDictionary::checkOutput(){
 //                cout<<"good value!!! val = "<<val<<endl;
         } else {//if (!hasLoop()){
             error = true;
-            cout<<"invalid value :( val = "<<val<<" wrong val = "<<decVal<<endl;
+//            cout << "invalid value :( val = " << val << " wrong val = " << decVal << endl;
+        }
+
+
+    }
+    if (!error){
+        cout<<"success!!!! dictionary is fine."<<endl;
+    } else {
+        cout<<"error!!!! dictionary is bad."<<endl;
+    }
+    return error;
+}
+
+bool StarDictionary::checkOutput(uint64_t key, int valIndex){
+    bool error = false;
+
+    vector<byte> temp1(fieldSizeBytes, 0);
+    vector<byte> temp2(fieldSizeBytes, 0);
+
+    vector<byte> variables = getVariables();
+    int index = hashForBins(key) % q;
+
+    auto indices = bins[index] -> dec(key);
+
+    int size = bins[0]->getTableSize() + gamma;
+   for (int i=0; i<indices.size(); i++){
+       for (int j=0; j<fieldSizeBytes; j++){
+           temp1[j] ^= bins[index]->getVariables()[indices[i]*fieldSizeBytes + j];
+       }
+
+   }
+
+    auto rightVal = bins[index] -> decode(key);
+    for (int j=0; j<fieldSizeBytes; j++) {
+        if (temp1[j] == rightVal[j]) {
+//            if (i%100000 == 0)
+//                cout<<"good value!!! val = "<<val<<endl;
+        } else {//if (!hasLoop()){
+            cout << "error in index bin"<< endl;
+        }
+    }
+
+
+    indices = bins[center] -> dec(key);
+
+    for (int i=0; i<indices.size(); i++){
+        for (int j=0; j<fieldSizeBytes; j++){
+//            temp[j] ^= variables[center*fieldSizeBytes*size + i*fieldSizeBytes + j];
+            temp2[j] ^= bins[center]->getVariables()[indices[i]*fieldSizeBytes + j];
         }
 
     }
+     rightVal = bins[center] -> decode(key);
+    for (int j=0; j<fieldSizeBytes; j++) {
+        if (temp2[j] == rightVal[j]) {
+//            if (i%100000 == 0)
+//                cout<<"good value!!! val = "<<val<<endl;
+        } else {//if (!hasLoop()){
+            cout << "error in center bin"<< endl;
+        }
+    }
+
+//        GF2XFromBytes(temp, decValBytes.data(), fieldSizeBytes);
+//        decVal = to_GF2E(temp);
+        for (int j=0; j<fieldSizeBytes; j++) {
+            if (temp1[j]^temp2[j] == values[valIndex * fieldSizeBytes + j]) {
+//            if (i%100000 == 0)
+//                cout<<"good value!!! val = "<<val<<endl;
+            } else {//if (!hasLoop()){
+                error = true;
+                cout << "invalid value :( "<< endl;
+            }
+        }
+
+
     if (!error){
         cout<<"success!!!! dictionary is fine."<<endl;
     }
@@ -1413,10 +1456,10 @@ bool StarDictionary::checkOutput(){
 }
 
 vector<byte> StarDictionary::getVariables()  {
-
+//    cout<<"in StarDictionary getVariables"<<endl;
     auto binVariables = bins[0]->getVariables();
     int innerSize = binVariables.size();
-    cout<<"innerSize in getVariables = "<<innerSize/fieldSizeBytes<<endl;
+//    cout<<"innerSize in getVariables = "<<innerSize/fieldSizeBytes<<endl;
     vector<byte> variables((q+1)*innerSize);
     memcpy(variables.data(), binVariables.data(), innerSize);
 

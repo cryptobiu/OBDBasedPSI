@@ -176,7 +176,7 @@ void Receiver::runOnline() {
     t1 = high_resolution_clock::now();
 
     timer->startSubTask("OT", iteration);
-//    runOOS(sigma);
+    //runOOS(sigma);
     timer->endSubTask("OT", iteration);
     t2 = high_resolution_clock::now();
 
@@ -254,138 +254,138 @@ vector<byte> Receiver::createDictionary(){
     return dic->getVariables();
 }
 
-//void Receiver::runOOS(vector<byte> & sigma){
-//
-////    u64 setSize = hashSize;//1 << 5;
-////    u64 numBin = hashSize*2.4; //2.4 * setSize;
-////    u64 numOTs = sigma.size()/fieldSizeBytes;
-//
-//    std::cout << "in runOOS() " << numOTs << "\n";
-//
-//    std::string name = "n";
-//    IOService ios(0);
-////    Session ep0(ios, "localhost", 1212, SessionMode::Server, name);
-//    Session ep1(ios, addressForOT, portForOT, SessionMode::Client, name);
-//    auto recvChl = ep1.addChannel(name, name);
-////    auto sendChl = ep0.addChannel(name, name);
-//
-//    LinearCode code;
-//    switch(fieldSize){
-//        case 64:
-//            code.load(mx65by448, sizeof(mx65by448));
-//            cout<<"load mx65by448"<<endl;
-//            break;
-//        case 72:
-//            code.load(mx72by462, sizeof(mx72by462));
-//            cout<<"load mx72by462"<<endl;
-//            break;
-//        case 84:
-//            code.load(mx84by495, sizeof(mx84by495));
-//            cout<<"load mx84by495"<<endl;
-//            break;
-//        case 90:
-//            code.load(mx90by495, sizeof(mx90by495));
-//            cout<<"load mx90by495"<<endl;
-//            break;
-//        case 132:
-//            code.load(mx132by583, sizeof(mx132by583));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 138:
-//            code.load(mx138by594, sizeof(mx138by594));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 144:
-//            code.load(mx144by605, sizeof(mx144by605));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 150:
-//            code.load(mx150by616, sizeof(mx150by616));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 156:
-//            code.load(mx156by627, sizeof(mx156by627));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 162:
-//            code.load(mx162by638, sizeof(mx162by638));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 168:
-//            code.load(mx168by649, sizeof(mx168by649));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 174:
-//            code.load(mx174by660, sizeof(mx174by660));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 210:
-//            code.load(mx210by732, sizeof(mx210by732));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 217:
-//            code.load(mx217by744, sizeof(mx217by744));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 231:
-//            code.load(mx231by768, sizeof(mx231by768));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//        case 238:
-//            code.load(mx238by776, sizeof(mx238by776));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//    }
-//
-////    PrtyMOtSender sender;
-//    recv.configure(isMalicious, 40, fieldSize);
-//
-//    //Base OT - simulated
-//    PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
-//    u64 baseCount = recv.getBaseOTCount();
-//    std::vector<block> baseRecv(baseCount);
-//    std::vector<std::array<block, 2>> baseSend(baseCount);
-//    BitVector baseChoice(baseCount);
-//    baseChoice.randomize(prng0);
-//    prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
-//    for (u64 i = 0; i < baseCount; ++i)
-//    {
-//        baseRecv[i] = baseSend[i][baseChoice[i]];
-//    }
-//
-////    sender.setBaseOts(baseRecv, baseChoice);
-//    recv.setBaseOts(baseSend);
-//
-//    //OT
-//    PRNG prng1(_mm_set_epi32(4253465, 3434565, 234435, 23987025));
-//    recv.init(numOTs, prng1, recvChl);
-//
-//    for (u64 i = 0; i < numOTs; i += stepSize)
-//    {
-////        cout<<"step size "<<i<<endl;
-//        auto curStepSize = std::min<u64>(stepSize, numOTs - i);
-////        cout<<"curStepSize "<<curStepSize<<endl;
-//        for (u64 k = 0; k < curStepSize; ++k)
-//        {
-//            recv.otCorrection(i + k, &sigma[fieldSizeBytes*(k + i)]);
-//        }
-//        recv.sendCorrection(recvChl, curStepSize);
-////        cout<<"after send correction"<<endl;
-//    }
-//}
-//
+void Receiver::runOOS(vector<byte> & sigma){
+
+//    u64 setSize = hashSize;//1 << 5;
+//    u64 numBin = hashSize*2.4; //2.4 * setSize;
+//    u64 numOTs = sigma.size()/fieldSizeBytes;
+
+    std::cout << "in runOOS() " << numOTs << "\n";
+
+    std::string name = "n";
+    IOService ios(0);
+//    Session ep0(ios, "localhost", 1212, SessionMode::Server, name);
+    Session ep1(ios, addressForOT, portForOT, SessionMode::Client, name);
+    auto recvChl = ep1.addChannel(name, name);
+//    auto sendChl = ep0.addChannel(name, name);
+
+    LinearCode code;
+    switch(fieldSize){
+        case 64:
+            code.load(mx65by448, sizeof(mx65by448));
+            cout<<"load mx65by448"<<endl;
+            break;
+        case 72:
+            code.load(mx72by462, sizeof(mx72by462));
+            cout<<"load mx72by462"<<endl;
+            break;
+        case 84:
+            code.load(mx84by495, sizeof(mx84by495));
+            cout<<"load mx84by495"<<endl;
+            break;
+        case 90:
+            code.load(mx90by495, sizeof(mx90by495));
+            cout<<"load mx90by495"<<endl;
+            break;
+        case 132:
+            code.load(mx132by583, sizeof(mx132by583));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 138:
+            code.load(mx138by594, sizeof(mx138by594));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 144:
+            code.load(mx144by605, sizeof(mx144by605));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 150:
+            code.load(mx150by616, sizeof(mx150by616));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 156:
+            code.load(mx156by627, sizeof(mx156by627));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 162:
+            code.load(mx162by638, sizeof(mx162by638));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 168:
+            code.load(mx168by649, sizeof(mx168by649));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 174:
+            code.load(mx174by660, sizeof(mx174by660));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 210:
+            code.load(mx210by732, sizeof(mx210by732));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 217:
+            code.load(mx217by744, sizeof(mx217by744));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 231:
+            code.load(mx231by768, sizeof(mx231by768));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 238:
+            code.load(mx238by776, sizeof(mx238by776));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+    }
+
+//    PrtyMOtSender sender;
+    recv.configure(isMalicious, 40, fieldSize);
+
+    //Base OT - simulated
+    PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    u64 baseCount = recv.getBaseOTCount();
+    std::vector<block> baseRecv(baseCount);
+    std::vector<std::array<block, 2>> baseSend(baseCount);
+    BitVector baseChoice(baseCount);
+    baseChoice.randomize(prng0);
+    prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
+    for (u64 i = 0; i < baseCount; ++i)
+    {
+        baseRecv[i] = baseSend[i][baseChoice[i]];
+    }
+
+//    sender.setBaseOts(baseRecv, baseChoice);
+    recv.setBaseOts(baseSend);
+
+    //OT
+    PRNG prng1(_mm_set_epi32(4253465, 3434565, 234435, 23987025));
+    recv.init(numOTs, prng1, recvChl);
+
+    for (u64 i = 0; i < numOTs; i += stepSize)
+    {
+//        cout<<"step size "<<i<<endl;
+        auto curStepSize = std::min<u64>(stepSize, numOTs - i);
+//        cout<<"curStepSize "<<curStepSize<<endl;
+        for (u64 k = 0; k < curStepSize; ++k)
+        {
+            recv.otCorrection(i + k, &sigma[fieldSizeBytes*(k + i)]);
+        }
+        recv.sendCorrection(recvChl, curStepSize);
+//        cout<<"after send correction"<<endl;
+    }
+}
+
 //void Receiver::computeXors(){
 //
 //    u64 baseCount = recv.getBaseOTCount();
@@ -508,7 +508,7 @@ void Sender::runOnline() {
     auto start = high_resolution_clock::now();
     auto t1 = high_resolution_clock::now();
 
-//    runOOS();
+    //runOOS();
     auto t2 = high_resolution_clock::now();
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
@@ -538,87 +538,87 @@ void Sender::runOnline() {
 
 }
 
-//void Sender::runOOS(){
-//
-////    u64 setSize = hashSize;//1 << 5;
-////    u64 numBin = hashSize*2.4; //2.4 * setSize;
-////    u64 numOTs = tableRealSize*2 + gamma;
-//
-//    std::cout << "in runOOS() = " << numOTs << "\n";
-//
-//    std::string name = "n";
-//    IOService ios(0);
-//    Session ep0(ios, addressForOT, portForOT, SessionMode::Server, name);
-////    Session ep1(ios, "localhost", 1212, SessionMode::Client, name);
-////    auto recvChl = ep1.addChannel(name, name);
-//    auto sendChl = ep0.addChannel(name, name);
-//
-//    switch(fieldSize){
-//        case 64:
-//            code.load(mx65by448, sizeof(mx65by448));
-//            cout<<"load mx65by448"<<endl;
-//            break;
-//        case 72:
-//            code.load(mx72by462, sizeof(mx72by462));
-//            cout<<"load mx72by462"<<endl;
-//            break;
-//        case 84:
-//            code.load(mx84by495, sizeof(mx84by495));
-//            cout<<"load mx84by495"<<endl;
-//            break;
-//        case 90:
-//            code.load(mx90by495, sizeof(mx90by495));
-//            cout<<"load mx90by495"<<endl;
-//            break;
-//        case 132:
-//            code.load(mx132by583, sizeof(mx132by583));
-//            cout<<"load mx132by583"<<endl;
-//            break;
-//
-//
-//    }
-//
-//
-////    PrtyMOtReceiver recv;
-//    sender.configure(isMalicious, 40, fieldSize);
-//
-//    //Base OT - simulated
-//    PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
-//    u64 baseCount = sender.getBaseOTCount();
-//
-//    cout<<"base count = "<<baseCount<<endl;
-//    std::vector<block> baseRecv(baseCount);
-//    std::vector<std::array<block, 2>> baseSend(baseCount);
-//    baseChoice.resize(baseCount);
-//    baseChoice.randomize(prng0);
-//    prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
-//    for (u64 i = 0; i < baseCount; ++i)
-//    {
-//        baseRecv[i] = baseSend[i][baseChoice[i]];
-//    }
-//
-//    sender.setBaseOts(baseRecv, baseChoice);
-////    recv.setBaseOts(baseSend);
-//
-//    //OT
-//    sender.init(numOTs, prng0, sendChl);
-//
-//    // Get the random OT messages
-//    for (u64 i = 0; i < numOTs; i += stepSize)
-//    {
-////        cout<<"step size "<<i<<endl;
-//        auto curStepSize = std::min<u64>(stepSize, numOTs - i);
-////        cout<<"curStepSize "<<curStepSize<<endl;
-//        sender.recvCorrection(sendChl, curStepSize);
-//        for (u64 k = 0; k < curStepSize; ++k)
-//        {
-//            sender.otCorrection(i + k);
-//        }
-////        cout<<"after correction"<<endl;
-//    }
-//
-//}
-//
+void Sender::runOOS(){
+
+//    u64 setSize = hashSize;//1 << 5;
+//    u64 numBin = hashSize*2.4; //2.4 * setSize;
+//    u64 numOTs = tableRealSize*2 + gamma;
+
+    std::cout << "in runOOS() = " << numOTs << "\n";
+
+    std::string name = "n";
+    IOService ios(0);
+    Session ep0(ios, addressForOT, portForOT, SessionMode::Server, name);
+//    Session ep1(ios, "localhost", 1212, SessionMode::Client, name);
+//    auto recvChl = ep1.addChannel(name, name);
+    auto sendChl = ep0.addChannel(name, name);
+
+    switch(fieldSize){
+        case 64:
+            code.load(mx65by448, sizeof(mx65by448));
+            cout<<"load mx65by448"<<endl;
+            break;
+        case 72:
+            code.load(mx72by462, sizeof(mx72by462));
+            cout<<"load mx72by462"<<endl;
+            break;
+        case 84:
+            code.load(mx84by495, sizeof(mx84by495));
+            cout<<"load mx84by495"<<endl;
+            break;
+        case 90:
+            code.load(mx90by495, sizeof(mx90by495));
+            cout<<"load mx90by495"<<endl;
+            break;
+        case 132:
+            code.load(mx132by583, sizeof(mx132by583));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+
+    }
+
+
+//    PrtyMOtReceiver recv;
+    sender.configure(isMalicious, 40, fieldSize);
+
+    //Base OT - simulated
+    PRNG prng0(_mm_set_epi32(4253465, 3434565, 234435, 23987045));
+    u64 baseCount = sender.getBaseOTCount();
+
+    cout<<"base count = "<<baseCount<<endl;
+    std::vector<block> baseRecv(baseCount);
+    std::vector<std::array<block, 2>> baseSend(baseCount);
+    baseChoice.resize(baseCount);
+    baseChoice.randomize(prng0);
+    prng0.get((u8*)baseSend.data()->data(), sizeof(block) * 2 * baseSend.size());
+    for (u64 i = 0; i < baseCount; ++i)
+    {
+        baseRecv[i] = baseSend[i][baseChoice[i]];
+    }
+
+    sender.setBaseOts(baseRecv, baseChoice);
+//    recv.setBaseOts(baseSend);
+
+    //OT
+    sender.init(numOTs, prng0, sendChl);
+
+    // Get the random OT messages
+    for (u64 i = 0; i < numOTs; i += stepSize)
+    {
+//        cout<<"step size "<<i<<endl;
+        auto curStepSize = std::min<u64>(stepSize, numOTs - i);
+//        cout<<"curStepSize "<<curStepSize<<endl;
+        sender.recvCorrection(sendChl, curStepSize);
+        for (u64 k = 0; k < curStepSize; ++k)
+        {
+            sender.otCorrection(i + k);
+        }
+//        cout<<"after correction"<<endl;
+    }
+
+}
+
 //void Sender::computeXors(){
 //
 //    u64 baseCount = sender.getBaseOTCount();

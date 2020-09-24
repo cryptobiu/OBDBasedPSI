@@ -167,13 +167,13 @@ vector<uint64_t> OBD2Tables::dec(uint64_t key){
 
     vector<uint64_t> indices;
     indices.push_back(first.bucket(key));
-    indices.push_back(second.bucket(key));
+    indices.push_back(tableRealSize + second.bucket(key));
 
     auto dhBits = getDHBits(key);
     uint64_t mask = 1;
     for (int j=0; j<gamma; j++){
         if ((dhBits & mask) == 1){
-            indices.push_back(j); //put 1 in the right vertex of the edge
+            indices.push_back(2*tableRealSize + j); //put 1 in the right vertex of the edge
         }
         dhBits = dhBits >> 1;
     }
@@ -186,12 +186,12 @@ vector<byte> OBD2Tables::decode(uint64_t key){
 
     GF2E val(0);
     for (int j=2; j<indices.size(); j++){
-        val += variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+        val += variables[indices[j]]; //put 1 in the right vertex of the edge
 
     }
 
     val += variables[indices[0]];
-    val += variables[tableRealSize + indices[1]];
+    val += variables[indices[1]];
 
     vector<byte> valBytes(fieldSizeBytes);
     BytesFromGF2X(valBytes.data(), rep(val), fieldSizeBytes);
@@ -490,27 +490,27 @@ void OBD2Tables::unpeeling(){
 //                GF2XFromBytes(temp, (byte*)&randomVal ,8);
 //                variables[2*tableRealSize+ indices[j]] = to_GF2E(temp);
 //            }
-            dhBitsVal += variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+            dhBitsVal += variables[indices[j]]; //put 1 in the right vertex of the edge
 
 //            cout<<"variable in "<<indices[j]<<" place = "<<variables[2*tableRealSize+ indices[j]]<<endl;
         }
 //        Poly::evalMersenne((ZpMersenneLongElement*)&poliVal, polynomial, (ZpMersenneLongElement*)&key);
 //        poliVal = polyVals[peelingCounter];
-        if (variables[indices[0]] == 0 && variables[tableRealSize + indices[1]] == 0 && sign[indices[0]] == 0 && sign[tableRealSize + indices[1]] == 0){
+        if (variables[indices[0]] == 0 && variables[indices[1]] == 0 && sign[indices[0]] == 0 && sign[indices[1]] == 0){
             randomVal = prg.getPRGBytesEX(fieldSizeBytes);
             GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
             variables[indices[0]] = to_GF2E(temp);
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
         }
         if (variables[indices[0]] == 0 && sign[indices[0]] == 0){
-            variables[indices[0]] = vals[key] + variables[tableRealSize + indices[1]] + dhBitsVal;
+            variables[indices[0]] = vals[key] + variables[indices[1]] + dhBitsVal;
 //                cout<<"set value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
 //            cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
 //            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
 //            cout<<"dhBitsVal = "<<dhBitsVal<<endl;
 //            cout<<"val = "<<vals[key]<<endl;
-        } if (variables[tableRealSize + indices[1]] == 0 && sign[tableRealSize + indices[1]] == 0){
-            variables[tableRealSize + indices[1]] = vals[key] + variables[indices[0]] + dhBitsVal;
+        } if (variables[indices[1]] == 0 && sign[indices[1]] == 0){
+            variables[indices[1]] = vals[key] + variables[indices[0]] + dhBitsVal;
 //                cout<<"set value "<<variables[tableRealSize + indices[1]]<<" index "<<tableRealSize + indices[1]<<endl;
 //            cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
 //            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
@@ -541,18 +541,18 @@ bool OBD2Tables::checkOutput(){
 
         dhBitsVal = 0;
         for (int j=2; j<indices.size(); j++){
-            dhBitsVal += variables[2*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+            dhBitsVal += variables[indices[j]]; //put 1 in the right vertex of the edge
 
         }
 
-        if ((variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal) == val) {
+        if ((variables[indices[0]] + variables[indices[1]] + dhBitsVal) == val) {
 //            if (i%100000 == 0)
 //                cout<<"good value!!! val = "<<val<<endl;
         } else {//if (!hasLoop()){
             error = true;
-            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal)<<endl;
+            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[indices[1]] + dhBitsVal)<<endl;
             cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
-            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
+            cout<<"variables["<<indices[1]<<"] = "<<variables[indices[1]]<<endl;
             cout<<"dhBitsVal = "<<dhBitsVal<<endl;
         }
 
@@ -641,14 +641,14 @@ vector<uint64_t> OBD3Tables::dec(uint64_t key){
 
     vector<uint64_t> indices;
     indices.push_back(first.bucket(key));
-    indices.push_back(second.bucket(key));
-    indices.push_back(third.bucket(key));
+    indices.push_back(tableRealSize + second.bucket(key));
+    indices.push_back(2*tableRealSize + third.bucket(key));
 
     auto dhBits = getDHBits(key);
     uint64_t mask = 1;
     for (int j=0; j<gamma; j++){
         if ((dhBits & mask) == 1){
-            indices.push_back(j); //put 1 in the right vertex of the edge
+            indices.push_back(3*tableRealSize + j); //put 1 in the right vertex of the edge
         }
         dhBits = dhBits >> 1;
     }
@@ -661,13 +661,13 @@ vector<byte> OBD3Tables::decode(uint64_t key){
 
     GF2E val(0);
     for (int j=3; j<indices.size(); j++){
-        val += variables[3*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+        val += variables[indices[j]]; //put 1 in the right vertex of the edge
 
     }
 
     val += variables[indices[0]];
-    val += variables[tableRealSize + indices[1]];
-    val += variables[2*tableRealSize + indices[2]];
+    val += variables[indices[1]];
+    val += variables[indices[2]];
 
     vector<byte> valBytes(fieldSizeBytes);
     BytesFromGF2X(valBytes.data(), rep(val), fieldSizeBytes);
@@ -1044,39 +1044,39 @@ void OBD3Tables::unpeeling(){
 //cout<<endl;
         dhBitsVal = 0;
         for (int j=3; j<indices.size(); j++){
-            dhBitsVal += variables[3*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+            dhBitsVal += variables[indices[j]]; //put 1 in the right vertex of the edge
 
 //            cout<<"variable in "<<indices[j]<<" place = "<<variables[2*tableRealSize+ indices[j]]<<endl;
         }
         if (variables[indices[0]] == 0 && sign[indices[0]] == 0){
 
-            if (variables[tableRealSize + indices[1]] == 0 && sign[tableRealSize + indices[1]] == 0){
+            if (variables[indices[1]] == 0 && sign[indices[1]] == 0){
                 randomVal = prg.getPRGBytesEX(fieldSizeBytes);
                 GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
-                variables[tableRealSize + indices[1]] = to_GF2E(temp);
+                variables[indices[1]] = to_GF2E(temp);
             }
 
-            if (variables[2*tableRealSize + indices[2]] == 0 && sign[2*tableRealSize + indices[2]] == 0) {
+            if (variables[indices[2]] == 0 && sign[indices[2]] == 0) {
                 randomVal = prg.getPRGBytesEX(fieldSizeBytes);
                 GF2XFromBytes(temp, randomVal, fieldSizeBytes);
-                variables[2 * tableRealSize + indices[2]] = to_GF2E(temp);
+                variables[indices[2]] = to_GF2E(temp);
             }
 
-            variables[indices[0]] = vals[key] + variables[tableRealSize + indices[1]] + variables[2*tableRealSize + indices[2]] + dhBitsVal;
+            variables[indices[0]] = vals[key] + variables[indices[1]] + variables[indices[2]] + dhBitsVal;
 
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
-        } else if (variables[tableRealSize + indices[1]] == 0 && sign[tableRealSize + indices[1]] == 0){
+        } else if (variables[indices[1]] == 0 && sign[indices[1]] == 0){
 
-            if (variables[2*tableRealSize + indices[2]] == 0 && sign[2*tableRealSize + indices[2]] == 0) {
+            if (variables[indices[2]] == 0 && sign[indices[2]] == 0) {
                 randomVal = prg.getPRGBytesEX(fieldSizeBytes);
                 GF2XFromBytes(temp, randomVal, fieldSizeBytes);
-                variables[2 * tableRealSize + indices[2]] = to_GF2E(temp);
+                variables[indices[2]] = to_GF2E(temp);
             }
 
-            variables[tableRealSize + indices[1]] = vals[key] + variables[indices[0]] + variables[2*tableRealSize + indices[2]] + dhBitsVal;
+            variables[indices[1]] = vals[key] + variables[indices[0]] + variables[indices[2]] + dhBitsVal;
 
-        } else if  (variables[2*tableRealSize + indices[2]] == 0 && sign[2*tableRealSize + indices[2]] == 0){
-            variables[2 * tableRealSize + indices[2]] = vals[key] + variables[indices[0]] + variables[tableRealSize + indices[1]] + dhBitsVal;
+        } else if  (variables[indices[2]] == 0 && sign[indices[2]] == 0){
+            variables[indices[2]] = vals[key] + variables[indices[0]] + variables[indices[1]] + dhBitsVal;
         }
     }
 //    cout<<"peelingCounter = "<<peelingCounter<<endl;
@@ -1102,19 +1102,19 @@ bool OBD3Tables::checkOutput(){
 
         dhBitsVal = 0;
         for (int j=3; j<indices.size(); j++){
-            dhBitsVal += variables[3*tableRealSize+ indices[j]]; //put 1 in the right vertex of the edge
+            dhBitsVal += variables[indices[j]]; //put 1 in the right vertex of the edge
 
         }
 
-        if ((variables[indices[0]] + variables[tableRealSize + indices[1]] +  variables[2*tableRealSize + indices[2]] + dhBitsVal) == val) {
+        if ((variables[indices[0]] + variables[indices[1]] +  variables[indices[2]] + dhBitsVal) == val) {
 //            if (i%100000 == 0)
 //                cout<<"good value!!! val = "<<val<<endl;
         } else {//if (!hasLoop()){
             error = true;
-            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[tableRealSize + indices[1]] + variables[2*tableRealSize + indices[2]] + dhBitsVal)<<endl;
+            cout<<"invalid value :( val = "<<val<<" wrong val = "<<(variables[indices[0]] + variables[indices[1]] + variables[indices[2]] + dhBitsVal)<<endl;
             cout<<"variables["<<indices[0]<<"] = "<<variables[indices[0]]<<endl;
-            cout<<"variables["<<tableRealSize + indices[1]<<"] = "<<variables[tableRealSize + indices[1]]<<endl;
-            cout<<"variables["<<2*tableRealSize + indices[2]<<"] = "<<variables[2*tableRealSize + indices[2]]<<endl;
+            cout<<"variables["<<indices[1]<<"] = "<<variables[indices[1]]<<endl;
+            cout<<"variables["<<indices[2]<<"] = "<<variables[indices[2]]<<endl;
             cout<<"dhBitsVal = "<<dhBitsVal<<endl;
         }
 
@@ -1138,6 +1138,7 @@ StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fi
 
     bins.resize(q+1);
     center = q;
+    gamma = 40 + 0.5*log(numItemsForBin);
 
     numItemsForBin = c2*(numItems/q);
     cout<<"v inside bin = "<<0.5*log(numItemsForBin)<<endl;
@@ -1200,6 +1201,7 @@ void StarDictionary::init() {
 vector<uint64_t> StarDictionary::dec(uint64_t key){
 
     int binIndex = hashForBins(key) % q;
+    int innerIndicesSize = bins[0]->getTableSize() + gamma;
     auto indices = bins[binIndex]->dec(key);
 
     cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
@@ -1211,13 +1213,13 @@ vector<uint64_t> StarDictionary::dec(uint64_t key){
     vector<uint64_t> newIndices(indices.size() + centerIndices.size()); //Will hold the indices of the big array
 
     for (int i=0; i<indices.size(); i++){
-        int startIndex = binIndex*numItemsForBin;
+        int startIndex = binIndex*innerIndicesSize;
         newIndices[i] = startIndex + indices[i];
         cout<<"index = "<<indices[i]<<" newIndex = "<<newIndices[i]<<endl;
     }
 
     for (int i=0; i<centerIndices.size(); i++){
-        int startIndex = center*numItemsForBin;
+        int startIndex = center*innerIndicesSize;
         newIndices[indices.size() + i] = startIndex + centerIndices[i];
         cout<<"center index = "<<centerIndices[i]<<" newIndex = "<<newIndices[indices.size() + i]<<endl;
     }

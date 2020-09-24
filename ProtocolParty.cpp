@@ -20,6 +20,12 @@ ProtocolParty::ProtocolParty(int argc, char* argv[]) : Protocol("PSI", argc, arg
     cout << "zeroBits: " << zeroBits << endl;
     cout << "zero mask: " << (int)zeroMask << "  " << std::bitset<8>(zeroMask) << endl;
 
+    auto c2 = stof(this->getParser().getValueByKey(arguments, "c2"));
+    auto c1 = stof(this->getParser().getValueByKey(arguments, "c1"));
+    auto q = stoi(this->getParser().getValueByKey(arguments, "q"));
+    auto numThreads = stoi(this->getParser().getValueByKey(arguments, "numThreads"));
+
+
     gamma = 60;
     vector<string> subTaskNames{"Online", "CreateDictionary", "OT", "ComputeXors", "ReceiveAndCalc"};
     timer = new Measurement(*this, subTaskNames);
@@ -76,7 +82,9 @@ cout<<"malicious = "<<isMalicious<<endl;
         dic = new OBD3Tables(hashSize, 1.25, fieldSize, gamma, 20);
     } else if (version.compare("star") == 0) {
         gamma = 40 + 0.5*log(hashSize);
-        dic = new StarDictionary(hashSize, 1.25, 1.04, 160, fieldSize, gamma, 0.5*log(hashSize));
+        //dic = new StarDictionary(hashSize, 1.25, 1.04, 160, fieldSize, gamma, 0.5*log(hashSize), numThreads);
+        dic = new StarDictionary(hashSize, c1, c2, q, fieldSize, gamma, 0.5*log(hashSize), numThreads);
+
     }
 
     dic->setReportStatstics(reportStatistics);

@@ -27,4 +27,4 @@ TARGET_LINK_LIBRARIES(OBDBasedPSI ntl.a libxxhash.so givaro blas linbox iml libn
         $ENV{HOME}/PaXoS_PSI_New/libOTe/lib/liblibOTe.a
         $ENV{HOME}/PaXoS_PSI_New/libOTe/lib/libcryptoTools.a
         $ENV{HOME}/libscapi/libscapi.a gmp
-        libboost_system.a pthread crypto dl)
+        boost_system pthread crypto dl)

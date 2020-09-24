@@ -82,7 +82,7 @@ void OBDTables::init() {
     peelingCounter = 0;
 }
 
-void OBDTables::encode(){
+bool OBDTables::encode(){
     auto start = high_resolution_clock::now();
     auto t1 = high_resolution_clock::now();
 
@@ -1134,8 +1134,9 @@ bool OBD3Tables::hasLoop(){
     return false;
 }
 
-StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v) : ObliviousDictionary(numItems, fieldSize, gamma, v), q(q) {
+StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v, int numThreads) : ObliviousDictionary(numItems, fieldSize, gamma, v), q(q) {
 
+    this->numThreads = numThreads;
     bins.resize(q+1);
     center = q;
     gamma = 40 + 0.5*log(numItemsForBin);
@@ -1240,16 +1241,45 @@ vector<byte> StarDictionary::decode(uint64_t key){
     return first;
 }
 
-void StarDictionary::encode() {
-
+bool StarDictionary::encode() {
 
     auto start = high_resolution_clock::now();
-    int succeed, failureIndex = -1;
 
-    for (int i=0; i<q; i++){
-        succeed = bins[i]->peeling();
-        if (!succeed) {
-            failureIndex = i;
+    int sizeForEachThread;
+    if (q <= numThreads){
+        numThreads = q;
+        sizeForEachThread = 1;
+    } else{
+        sizeForEachThread = (q + numThreads - 1)/ numThreads;
+    }
+    vector<thread> threads(numThreads);
+    vector<int> failureIndices(numThreads);
+
+
+    for (int t=0; t<numThreads; t++) {
+
+        if ((t + 1) * sizeForEachThread <= q) {
+            threads[t] = thread(&StarDictionary::peelMultipleBinsThread, this, t * sizeForEachThread, (t + 1) * sizeForEachThread, ref(failureIndices),t);
+        } else {
+            threads[t] = thread(&StarDictionary::peelMultipleBinsThread, this, t * sizeForEachThread, q, ref(failureIndices),t);
+        }
+    }
+    for (int t=0; t<numThreads; t++){
+        threads[t].join();
+    }
+
+    int failureIndex = -1;//-1 means no failures, index means one failure, -2 means at least 2 failures
+    for (int t=0; t<numThreads; t++) {
+
+        if(failureIndices[t]==-1){}//do nothing
+        else if (failureIndices[t]>-1) {//one bin failure
+
+            if(failureIndex==-1) {
+                failureIndex = failureIndices[t];//indicates failure, 2 bins have failed
+            }
+            else{
+                failureIndex = -2;
+            }
         }
     }
 
@@ -1258,11 +1288,11 @@ void StarDictionary::encode() {
     cout << "time in milliseconds for peel all bins: " << duration << endl;
 
     start = high_resolution_clock::now();
-    if (failureIndex == -1){
+    if (failureIndex == -1){//all bins have peeled succesfully
         bins[center]->generateRandomEncoding();
         cout<<"no failure. generate random values for center"<<endl;
 
-    } else {
+    } else if (failureIndex > -1){//one bin has failed
         cout<<"failure in bin number "<<failureIndex<<". generate random values for center"<<endl;
         bins[failureIndex]->generateRandomEncoding();
         vector<byte> valsForCenter(numItemsForBin*fieldSizeBytes);
@@ -1282,6 +1312,9 @@ void StarDictionary::encode() {
         bins[center]->generateExternalToolValues();
         bins[center]->unpeeling();
     }
+    else {//unlikely, means that 2 or more bins have failed - negligable
+        return false;
+    }
 
     end = high_resolution_clock::now();
     duration = duration_cast<milliseconds>(end-start).count();
@@ -1290,14 +1323,35 @@ void StarDictionary::encode() {
     start = high_resolution_clock::now();
     vector<byte> centerValues = bins[center]->getVariables();
 
-    for (int i=0; i<q; i++){
+
+    for (int t=0; t<numThreads; t++) {
+
+        if ((t + 1) * sizeForEachThread <= q) {
+            threads[t] = thread(&StarDictionary::unpeelMultipleBinsThread, this, t * sizeForEachThread, (t + 1) * sizeForEachThread, failureIndex);
+        } else {
+            threads[t] = thread(&StarDictionary::unpeelMultipleBinsThread, this, t * sizeForEachThread, q,failureIndex);
+        }
+    }
+    for (int t=0; t<numThreads; t++){
+        threads[t].join();
+    }
+
+
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end-start).count();
+    cout << "time in milliseconds for unpeel all bins: " << duration << endl;
+
+}
+
+void StarDictionary::unpeelMultipleBinsThread(int start, int end, int failureIndex)  {
+    for (int i=start; i < end; i++){
         if (i != failureIndex){
 
-            for (int j=0; j<numItemsForBin; j++){
+            for (int j=0; j < numItemsForBin; j++){
                 auto binVal = bins[center]->decode(keysForBins[i][j]);
 
-                for (int k=0; k<fieldSizeBytes; k++){
-                    valsForBins[i][j*fieldSizeBytes + k] = binVal[k]^valsForBins[i][j*fieldSizeBytes + k];
+                for (int k=0; k < fieldSizeBytes; k++){
+                    valsForBins[i][j * fieldSizeBytes + k] = binVal[k] ^ valsForBins[i][j * fieldSizeBytes + k];
                 }
             }
 
@@ -1306,12 +1360,21 @@ void StarDictionary::encode() {
             bins[i]->unpeeling();
         }
     }
+}
 
+void StarDictionary::peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId) {
+    int succeed, failureIndex = -1;
 
-    end = high_resolution_clock::now();
-    duration = duration_cast<milliseconds>(end-start).count();
-    cout << "time in milliseconds for unpeel all bins: " << duration << endl;
-
+    for (int i=start; i < end; i++){
+        succeed = bins[i]->peeling();
+        if (!succeed) {
+            if(failureIndex==-1)
+                failureIndex = i;
+            else if (failureIndex>-1)
+                failureIndex = -2;//indicates failure, 2 bins have failed
+        }
+    }
+    failureIndices[threadId] = failureIndex;
 }
 
 

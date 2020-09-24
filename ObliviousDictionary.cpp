@@ -1134,8 +1134,9 @@ bool OBD3Tables::hasLoop(){
     return false;
 }
 
-StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v) : ObliviousDictionary(numItems, fieldSize, gamma, v), q(q) {
+StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v, int numThreads) : ObliviousDictionary(numItems, fieldSize, gamma, v), q(q) {
 
+    this->numThreads = numThreads;
     bins.resize(q+1);
     center = q;
 
@@ -1239,8 +1240,6 @@ vector<byte> StarDictionary::decode(uint64_t key){
 }
 
 bool StarDictionary::encode() {
-
-    int numThreads = 4;
 
     auto start = high_resolution_clock::now();
 

@@ -248,10 +248,11 @@ private:
     Hasher hashForBins;
     int numItemsForBin;
     int center;
+    int numThreads = 1;
 
 public:
 
-    StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v);
+    StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v, int numThreads = 1);
 
     void setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values) override;
 

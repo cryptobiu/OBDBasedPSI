@@ -82,9 +82,10 @@ cout<<"malicious = "<<isMalicious<<endl;
     } else if (version.compare("3Tables") == 0) {
         dic = new OBD3Tables(hashSize, 1.25, fieldSize, gamma, 20);
     } else if (version.compare("star") == 0) {
-        gamma = 40 + 0.5*log(hashSize);
+        int numItemsForBin = c2*(hashSize/q);
+        gamma = 40 + 0.5*log(numItemsForBin);
         //dic = new StarDictionary(hashSize, 1.25, 1.04, 160, fieldSize, gamma, 0.5*log(hashSize), numThreads);
-        dic = new StarDictionary(hashSize, c1, c2, q, fieldSize, gamma, 0.5*log(hashSize), numThreads);
+        dic = new StarDictionary(hashSize, c1, c2, q, fieldSize, gamma, 0.5*log(numItemsForBin), numThreads);
 
     }
 
@@ -415,6 +416,7 @@ void Receiver::computeXors(){
 
         auto indices = dic->dec(keys[i]);
 
+
         for (int j=0; j<blockSize; j++) {
             output[j] = _mm_xor_si128(*(recv.mT0.data(indices[0]) + j),*(recv.mT0.data(indices[1]) + j));
         }
@@ -472,21 +474,24 @@ void Receiver::receiveSenderXors(){
 
 void Receiver::checkVariables(vector<byte> & variables){
 
-
+cout<<"in check"<<endl;
     bool error = false;
+    vector<byte> check(fieldSizeBytes);
     for (int i=0; i<hashSize; i++){
 
-        auto check = dic->decode(keys[i]);
+//        auto check = dic->decode(keys[i]);
+        auto indices = dic->dec(keys[i]);
 
-//        for (int j=0; j<fieldSizeBytes; j++) {
-//            check[j] = variables[indices[0]*fieldSizeBytes + j] ^ variables[tableRealSize*fieldSizeBytes + indices[1]*fieldSizeBytes + j];
-//        }
-//
-//        for (int k=2; k<indices.size(); k++) {
-//            for (int j=0; j<fieldSizeBytes; j++) {
-//                check[j] = check[j] ^ variables[2*tableRealSize*fieldSizeBytes + indices[k]*fieldSizeBytes + j];
-//            }
-//        }
+
+        for (int j=0; j<fieldSizeBytes; j++) {
+            check[j] = variables[indices[0]*fieldSizeBytes + j] ^ variables[indices[1]*fieldSizeBytes + j];
+        }
+
+        for (int k=2; k<indices.size(); k++) {
+            for (int j=0; j<fieldSizeBytes; j++) {
+                check[j] = check[j] ^ variables[indices[k]*fieldSizeBytes + j];
+            }
+        }
 
         for (int j=0; j<fieldSizeBytes; j++) {
             if (check[j] != vals[i*fieldSizeBytes + j]){
@@ -642,10 +647,15 @@ void Sender::computeXors(){
     vector<byte> temp(blockSize*16);
   //  cout << "created temp" <<endl;
     int size;
-
+//    cout<<"indices = "<<endl;
     for (int i=0; i<hashSize; i++){
 
         auto indices = dic->dec(keys[i]);
+
+//        for (int k=0; k<10; k++) {
+//            cout<<indices[i]<<" ";
+//        }
+//        cout<<endl;
 
         for (int j=0; j<blockSize; j++) {
             output[j] = _mm_xor_si128(*(sender.mT.data(indices[0]) + j),*(sender.mT.data(indices[1]) + j));

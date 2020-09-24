@@ -96,7 +96,6 @@ public:
         }};
 
     virtual vector<byte> getVariables() {
-        cout<<"variables.size() = "<<variables.size()<<endl;
         if (sigma.size() == 0) { //If the variables do not randomly chosen
             sigma.resize(variables.size() * fieldSizeBytes);
             for (int i = 0; i < variables.size(); i++) {

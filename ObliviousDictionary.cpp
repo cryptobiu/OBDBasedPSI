@@ -574,9 +574,9 @@ bool OBD2Tables::hasLoop(){
 
 OBD3Tables::OBD3Tables(int hashSize, double c1, int fieldSize, int gamma, int v) : OBDTables(hashSize, fieldSize, gamma, v), c1(c1) {
 
-    firstSeed = prg.getRandom64();
-    secondSeed = prg.getRandom64();
-    thirdSeed = prg.getRandom64();
+    firstSeed = 1;
+    secondSeed = 2;
+    thirdSeed = 3;
 
     auto start = high_resolution_clock::now();
     createSets();
@@ -1136,15 +1136,20 @@ StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fi
     this->numThreads = numThreads;
     bins.resize(q+1);
     center = q;
-    gamma = 40 + 0.5*log(numItemsForBin);
 
     numItemsForBin = c2*(numItems/q);
+    cout<<"gamma = "<<gamma<<endl;
+    cout<<"numItemsForBin = "<<numItemsForBin<<endl;
+    gamma = 40 + 0.5*log(numItemsForBin);
+    cout<<"gamma = "<<gamma<<endl;
+
     cout<<"v inside bin = "<<0.5*log(numItemsForBin)<<endl;
     for (int i=0; i<q+1; i++){
-        bins[i] = new OBD3Tables(numItemsForBin, c1, fieldSize, 40 + 0.5*log(numItemsForBin), 0.5*log(numItemsForBin));
+        bins[i] = new OBD3Tables(numItemsForBin, c1, fieldSize, gamma, v);
     }
 
     int tableRealSize = bins[0]->getTableSize();
+    cout<<"variablesSize = "<<tableRealSize + gamma<<endl;
 
     //the value is fixed for tests reasons
     int binsHashSeed = 4;
@@ -1200,6 +1205,9 @@ vector<uint64_t> StarDictionary::dec(uint64_t key){
 
     int binIndex = hashForBins(key) % q;
     int innerIndicesSize = bins[0]->getTableSize() + gamma;
+    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
+    cout<<"gamma = "<<gamma<<endl;
+    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
     auto indices = bins[binIndex]->dec(key);
 
 //    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
@@ -1210,14 +1218,14 @@ vector<uint64_t> StarDictionary::dec(uint64_t key){
 
     vector<uint64_t> newIndices(indices.size() + centerIndices.size()); //Will hold the indices of the big array
 
+    int startIndex = binIndex*innerIndicesSize;
     for (int i=0; i<indices.size(); i++){
-        int startIndex = binIndex*innerIndicesSize;
         newIndices[i] = startIndex + indices[i];
 //        cout<<"index = "<<indices[i]<<" newIndex = "<<newIndices[i]<<endl;
     }
 
+    startIndex = center*innerIndicesSize;
     for (int i=0; i<centerIndices.size(); i++){
-        int startIndex = center*innerIndicesSize;
         newIndices[indices.size() + i] = startIndex + centerIndices[i];
 //        cout<<"center index = "<<centerIndices[i]<<" newIndex = "<<newIndices[indices.size() + i]<<endl;
     }
@@ -1408,12 +1416,13 @@ vector<byte> StarDictionary::getVariables()  {
 
     auto binVariables = bins[0]->getVariables();
     int innerSize = binVariables.size();
+    cout<<"innerSize in getVariables = "<<innerSize/fieldSizeBytes<<endl;
     vector<byte> variables((q+1)*innerSize);
     memcpy(variables.data(), binVariables.data(), innerSize);
 
     for (int i=1; i<q+1; i++){
         binVariables = bins[i]->getVariables();
-
+        memcpy(variables.data() + i*innerSize, binVariables.data(), innerSize);
     }
     return variables;
 }

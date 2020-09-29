@@ -190,36 +190,39 @@ void Receiver::runOnline() {
 //    checkVariables(sigma);
     t1 = high_resolution_clock::now();
 
-    timer->startSubTask("OT", iteration);
-    runOOS(sigma);
-    timer->endSubTask("OT", iteration);
-    t2 = high_resolution_clock::now();
+    if (reportStatistics == 0) {
+        timer->startSubTask("OT", iteration);
+        runOOS(sigma);
+        timer->endSubTask("OT", iteration);
+        t2 = high_resolution_clock::now();
 
-    duration = duration_cast<milliseconds>(t2-t1).count();
-    cout << "run OOS took in milliseconds: " << duration << endl;
+        duration = duration_cast<milliseconds>(t2 - t1).count();
+        cout << "run OOS took in milliseconds: " << duration << endl;
 
 
-    t1 = high_resolution_clock::now();
-    timer->startSubTask("ComputeXors", iteration);
-    computeXors();
-    timer->endSubTask("ComputeXors", iteration);
-    t2 = high_resolution_clock::now();
+        t1 = high_resolution_clock::now();
+        timer->startSubTask("ComputeXors", iteration);
+        computeXors();
+        timer->endSubTask("ComputeXors", iteration);
+        t2 = high_resolution_clock::now();
 
-    duration = duration_cast<milliseconds>(t2-t1).count();
-    cout << "computeXors took in milliseconds: " << duration << endl;
+        duration = duration_cast<milliseconds>(t2 - t1).count();
+        cout << "computeXors took in milliseconds: " << duration << endl;
 
-    t1 = high_resolution_clock::now();
-    timer->startSubTask("ReceiveAndCalc", iteration);
-    receiveSenderXors();
-    timer->endSubTask("ReceiveAndCalc", iteration);
-    t2 = high_resolution_clock::now();
+        t1 = high_resolution_clock::now();
+        timer->startSubTask("ReceiveAndCalc", iteration);
+        receiveSenderXors();
+        timer->endSubTask("ReceiveAndCalc", iteration);
+        t2 = high_resolution_clock::now();
 
-    duration = duration_cast<milliseconds>(t2-t1).count();
-    cout << "receiveXors took in milliseconds: " << duration << endl;
-    auto end = high_resolution_clock::now();
+        duration = duration_cast<milliseconds>(t2 - t1).count();
+        cout << "receiveXors took in milliseconds: " << duration << endl;
+        auto end = high_resolution_clock::now();
 
-    duration = duration_cast<milliseconds>(end - start).count();
-    cout << "all protocol took in milliseconds: " << duration << endl;
+        duration = duration_cast<milliseconds>(end - start).count();
+        cout << "all protocol took in milliseconds: " << duration << endl;
+
+    }
 
 }
 

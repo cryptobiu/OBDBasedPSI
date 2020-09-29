@@ -212,7 +212,7 @@ protected:
     int tableRealSize;
 
     uint64_t dhSeed;
-
+    double c1;
 
     vector<uint64_t> peelingVector;
     int peelingCounter;
@@ -225,7 +225,7 @@ protected:
 
 public:
 
-    OBDTables(int hashSize, int fieldSize, int gamma, int v) : ObliviousDictionary(hashSize, fieldSize, gamma, v){
+    OBDTables(int hashSize, double c1, int fieldSize, int gamma, int v) : ObliviousDictionary(hashSize, fieldSize, gamma, v), c1(c1){
         //the value is fixed for tests reasons
         dhSeed = 5;
         DH = Hasher(dhSeed);
@@ -261,7 +261,7 @@ private:
     unordered_set<uint64_t, Hasher> second;
 
 public:
-    OBD2Tables(int hashSize, int fieldSize, int gamma, int v);
+    OBD2Tables(int hashSize, double c1, int fieldSize, int gamma, int v);
 
     void createSets() override;
 
@@ -292,8 +292,6 @@ private:
     unordered_set<uint64_t, Hasher> first;
     unordered_set<uint64_t, Hasher> second;
     unordered_set<uint64_t, Hasher> third;
-
-    double c1;
 
 
     void handleQueue(queue<int> &queueMain, unordered_set<uint64_t, Hasher> &main,
@@ -342,6 +340,12 @@ private:
     int center;
     int numThreads = 1;
 
+    void peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId);
+
+    void unpeelMultipleBinsThread(int start, int end, int failureIndex);
+
+    void setNewValsThread(int start, int end, int failureIndex);
+
 public:
 
     StarDictionary(int numItems, double c1, double c2, int q, int fieldSize, int gamma, int v, int numThreads = 1);
@@ -363,11 +367,8 @@ public:
     }
 
     vector<byte> getVariables() override;
+
     bool checkOutput(uint64_t key, int valIndex);
-
-    void peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId);
-
-    void unpeelMultipleBinsThread(int start, int end, int failureIndex);
 };
 
 

@@ -78,9 +78,9 @@ cout<<"malicious = "<<isMalicious<<endl;
 
 
     if (version.compare("2Tables") == 0) {
-        dic = new OBD2Tables(hashSize, fieldSize, gamma, 20);
+        dic = new OBD2Tables(hashSize, c1, fieldSize, gamma, 20);
     } else if (version.compare("3Tables") == 0) {
-        dic = new OBD3Tables(hashSize, 1.25, fieldSize, gamma, 20);
+        dic = new OBD3Tables(hashSize, c1, fieldSize, gamma, 20);
     } else if (version.compare("star") == 0) {
         int numItemsForBin = c2*(hashSize/q);
         gamma = 40 + 0.5*log(numItemsForBin);

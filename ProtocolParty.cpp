@@ -93,7 +93,7 @@ cout<<"malicious = "<<isMalicious<<endl;
 
     hashSize = dic->getHashSize();
     tableRealSize = dic->getTableSize();
-    numOTs = tableRealSize + gamma;
+    numOTs = tableRealSize;
     cout<<"after create dictionary. hashSize = "<<hashSize<<endl;
     cout<<"after create dictionary. tableRealSize = "<<tableRealSize<<endl;
     keys.resize(hashSize);
@@ -187,7 +187,7 @@ void Receiver::runOnline() {
 
     auto duration = duration_cast<milliseconds>(t2-t1).count();
     cout << "createDictionary took in milliseconds: " << duration << endl;
-    checkVariables(sigma);
+//    checkVariables(sigma);
     t1 = high_resolution_clock::now();
 
     timer->startSubTask("OT", iteration);
@@ -263,7 +263,7 @@ vector<byte> Receiver::createDictionary(){
     auto duration = duration_cast<milliseconds>(end - start).count();
     cout << "all dictionary took in milliseconds: " << duration << endl;
 
-        dic->checkOutput();
+//        dic->checkOutput();
 
 
     return dic->getVariables();
@@ -417,6 +417,10 @@ void Receiver::computeXors(){
     for (int i=0; i<hashSize; i++){
 
         auto indices = dic->dec(keys[i]);
+//        for (int k=0; k<indices.size(); k++) {
+//            cout<<indices[k]<<" ";
+//        }
+//        cout<<endl;
 
 
         for (int j=0; j<blockSize; j++) {
@@ -658,8 +662,8 @@ void Sender::computeXors(){
 
         auto indices = dic->dec(keys[i]);
 
-//        for (int k=0; k<10; k++) {
-//            cout<<indices[i]<<" ";
+//        for (int k=0; k<indices.size(); k++) {
+//            cout<<indices[k]<<" ";
 //        }
 //        cout<<endl;
 

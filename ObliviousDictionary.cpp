@@ -1104,7 +1104,7 @@ StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fi
     }
 
     int tableRealSize = bins[0]->getTableSize();
-    cout<<"variablesSize = "<<tableRealSize + gamma<<endl;
+    cout<<"variablesSize = "<<tableRealSize<<endl;
 
     //the value is fixed for tests reasons
     int binsHashSeed = 4;
@@ -1158,7 +1158,7 @@ void StarDictionary::init() {
 vector<uint64_t> StarDictionary::dec(uint64_t key){
 
     int binIndex = hashForBins(key) % q;
-    int innerIndicesSize = bins[0]->getTableSize() + gamma;
+    int innerIndicesSize = bins[0]->getTableSize();
 //    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
 //    cout<<"gamma = "<<gamma<<endl;
 //    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
@@ -1398,7 +1398,7 @@ bool StarDictionary::checkOutput(uint64_t key, int valIndex){
 
     auto indices = bins[index] -> dec(key);
 
-    int size = bins[0]->getTableSize() + gamma;
+    int size = bins[0]->getTableSize();
    for (int i=0; i<indices.size(); i++){
        for (int j=0; j<fieldSizeBytes; j++){
            temp1[j] ^= bins[index]->getVariables()[indices[i]*fieldSizeBytes + j];

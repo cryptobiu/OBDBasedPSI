@@ -1140,8 +1140,8 @@ void StarDictionary::setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values
     for (int i=0; i<q; i++){
         indexInInnerBin = numItemInBin[i];
         int numElementsToFill = numItemsForBin - indexInInnerBin;
-        //prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
-        //prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
+        prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
+        prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
 
         //set the keys and values of the bin
         //TODO no need to set values here

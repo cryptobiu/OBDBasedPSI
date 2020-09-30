@@ -230,7 +230,12 @@ vector<byte> Receiver::createDictionary(){
     dic->init();
 
     auto start = high_resolution_clock::now();
-    dic->encode();
+    auto success = dic->encode();
+
+    if (success == 0){
+        cout<<"failure!!"<<endl;
+        exit(1);
+    }
 //    auto t1 = high_resolution_clock::now();
 //
 //    dic->fillTables();

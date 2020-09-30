@@ -707,7 +707,7 @@ int OBD3Tables::peeling() {
             bucketInd = first.bucket(key);
             first.erase(key);
 
-            if(first.bucket_size(bucketInd)==1)
+            if (first.bucket_size(bucketInd) == 1)
                 queueFirst.push(bucketInd);
 
             //Update the second vertex on the edge
@@ -732,13 +732,13 @@ int OBD3Tables::peeling() {
             bucketInd = first.bucket(key);
             first.erase(key);
 
-            if(first.bucket_size(bucketInd)==1)
+            if (first.bucket_size(bucketInd) == 1)
                 queueFirst.push(bucketInd);
 
             bucketInd = second.bucket(key);
             second.erase(key);
 
-            if(second.bucket_size(bucketInd)==1)
+            if (second.bucket_size(bucketInd) == 1)
                 queueSecond.push(bucketInd);
 
         }
@@ -758,15 +758,15 @@ int OBD3Tables::peeling() {
 
 //    start = high_resolution_clock::now();
     //handle the queues one by one
-    while(queueFirst.size()!=0 ||
-          queueSecond.size()!=0 ||
-          queueThird.size()!=0){
+    while (queueFirst.size() != 0 ||
+           queueSecond.size() != 0 ||
+           queueThird.size() != 0) {
 
-        handleQueue(queueFirst, first, queueSecond, second, queueThird,third);
+        handleQueue(queueFirst, first, queueSecond, second, queueThird, third);
 
-        handleQueue(queueSecond, second, queueFirst, first, queueThird,third);
+        handleQueue(queueSecond, second, queueFirst, first, queueThird, third);
 
-        handleQueue(queueThird,third, queueFirst, first, queueSecond, second);
+        handleQueue(queueThird, third, queueFirst, first, queueSecond, second);
 
     }
 
@@ -774,8 +774,9 @@ int OBD3Tables::peeling() {
 //    duration = duration_cast<milliseconds>(end-start).count();
 //      cout << "time in milliseconds for peel queues: " << duration << endl;
 
-    if (peelingCounter != hashSize)
-        cout << "2 core contain : " << hashSize - peelingCounter << endl;
+    if (peelingCounter != hashSize) {
+    cout << "2 core contain : " << hashSize - peelingCounter << endl;
+    }
 //        cout << "hashSize : " << hashSize << endl;
 
 
@@ -1242,6 +1243,8 @@ bool StarDictionary::encode() {
             else{
                 failureIndex = -2;
             }
+        } else {
+            failureIndex = -2;
         }
     }
 
@@ -1277,6 +1280,7 @@ bool StarDictionary::encode() {
         bins[center]->unpeeling();
     }
     else {//unlikely, means that 2 or more bins have failed - negligable
+        cout<<"2 or more bins have failed"<<endl;
         return false;
     }
 
@@ -1328,6 +1332,8 @@ bool StarDictionary::encode() {
     end = high_resolution_clock::now();
     duration = duration_cast<milliseconds>(end-start).count();
     cout << "time in milliseconds for unpeel all bins: " << duration << endl;
+
+    return true;
 
 }
 

@@ -84,7 +84,7 @@ bool OBDTables::encode(){
     cout << "encode took in milliseconds: " << duration << endl;
 };
 
-OBD2Tables::OBD2Tables(int hashSize, int fieldSize, int gamma, int v) : OBDTables(hashSize, fieldSize, gamma, v){
+OBD2Tables::OBD2Tables(int hashSize, double c1, int fieldSize, int gamma, int v) : OBDTables(hashSize, c1, fieldSize, gamma, v){
     //the values are fixed for tests reasons
     firstSeed = 1;
     secondSeed = 2;
@@ -102,8 +102,9 @@ OBD2Tables::OBD2Tables(int hashSize, int fieldSize, int gamma, int v) : OBDTable
 }
 
 void OBD2Tables::createSets(){
-    first = unordered_set<uint64_t, Hasher>(hashSize*1, Hasher(firstSeed));
-    second = unordered_set<uint64_t, Hasher>(hashSize*1, Hasher(secondSeed));
+    double factorSize = c1/2;
+    first = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(firstSeed));
+    second = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(secondSeed));
 
     tableRealSize = first.bucket_count();
     cout<<"tableRealSize = "<<tableRealSize<<endl;
@@ -531,7 +532,7 @@ bool OBD2Tables::hasLoop(){
     return false;
 }
 
-OBD3Tables::OBD3Tables(int hashSize, double c1, int fieldSize, int gamma, int v) : OBDTables(hashSize, fieldSize, gamma, v), c1(c1) {
+OBD3Tables::OBD3Tables(int hashSize, double c1, int fieldSize, int gamma, int v) : OBDTables(hashSize, c1, fieldSize, gamma, v){
 
     firstSeed = 1;
     secondSeed = 2;
@@ -1104,7 +1105,7 @@ StarDictionary::StarDictionary(int numItems, double c1, double c2, int q, int fi
     }
 
     int tableRealSize = bins[0]->getTableSize();
-    cout<<"variablesSize = "<<tableRealSize + gamma<<endl;
+    cout<<"variablesSize = "<<tableRealSize<<endl;
 
     //the value is fixed for tests reasons
     int binsHashSeed = 4;
@@ -1158,7 +1159,7 @@ void StarDictionary::init() {
 vector<uint64_t> StarDictionary::dec(uint64_t key){
 
     int binIndex = hashForBins(key) % q;
-    int innerIndicesSize = bins[0]->getTableSize() + gamma;
+    int innerIndicesSize = bins[0]->getTableSize();
 //    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
 //    cout<<"gamma = "<<gamma<<endl;
 //    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
@@ -1285,22 +1286,30 @@ bool StarDictionary::encode() {
     vector<byte> centerValues = bins[center]->getVariables();
 
 
+    for (int t=0; t<numThreads; t++) {
+
+        if ((t + 1) * sizeForEachThread <= q) {
+            threads[t] = thread(&StarDictionary::setNewValsThread, this, t * sizeForEachThread, (t + 1) * sizeForEachThread, failureIndex);
+        } else {
+            threads[t] = thread(&StarDictionary::setNewValsThread, this, t * sizeForEachThread, q,failureIndex);
+        }
+    }
+    for (int t=0; t<numThreads; t++){
+        threads[t].join();
+    }
+
+    //Cannot be done using threads since GF2X fails
     for (int i=0; i < q; i++){
         if (i != failureIndex){
 
-            for (int j=0; j < numItemsForBin; j++){
-                auto binVal = bins[center]->decode(keysForBins[i][j]);
-
-                for (int k=0; k < fieldSizeBytes; k++){
-                    valsForBins[i][j * fieldSizeBytes + k] = binVal[k] ^ valsForBins[i][j * fieldSizeBytes + k];
-                }
-            }
-
             bins[i]->setKeysAndVals(keysForBins[i], valsForBins[i]);
-//            bins[i]->generateExternalToolValues();
-//            bins[i]->unpeeling();
         }
     }
+    end = high_resolution_clock::now();
+    duration = duration_cast<milliseconds>(end-start).count();
+    cout << "time in milliseconds for set new vals for all bins: " << duration << endl;
+
+    start = high_resolution_clock::now();
     for (int t=0; t<numThreads; t++) {
 
         if ((t + 1) * sizeForEachThread <= q) {
@@ -1318,6 +1327,23 @@ bool StarDictionary::encode() {
     duration = duration_cast<milliseconds>(end-start).count();
     cout << "time in milliseconds for unpeel all bins: " << duration << endl;
 
+}
+
+void StarDictionary::setNewValsThread(int start, int end, int failureIndex){
+    for (int i=start; i < end; i++) {
+        if (i != failureIndex) {
+
+            for (int j = 0; j < numItemsForBin; j++) {
+                auto binVal = bins[center]->decode(keysForBins[i][j]);
+
+                for (int k = 0; k < fieldSizeBytes; k++) {
+                    valsForBins[i][j * fieldSizeBytes + k] = binVal[k] ^ valsForBins[i][j * fieldSizeBytes + k];
+                }
+            }
+            //            bins[i]->generateExternalToolValues();
+            //            bins[i]->unpeeling();
+        }
+    }
 }
 
 void StarDictionary::unpeelMultipleBinsThread(int start, int end, int failureIndex)  {
@@ -1398,7 +1424,7 @@ bool StarDictionary::checkOutput(uint64_t key, int valIndex){
 
     auto indices = bins[index] -> dec(key);
 
-    int size = bins[0]->getTableSize() + gamma;
+    int size = bins[0]->getTableSize();
    for (int i=0; i<indices.size(); i++){
        for (int j=0; j<fieldSizeBytes; j++){
            temp1[j] ^= bins[index]->getVariables()[indices[i]*fieldSizeBytes + j];

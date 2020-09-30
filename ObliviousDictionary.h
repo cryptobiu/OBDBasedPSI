@@ -107,12 +107,39 @@ cout<<"fieldSizeBytes = "<<fieldSizeBytes<<endl;
 
         sigma.resize(variables.size()*fieldSizeBytes);
         prg.getPRGBytes(sigma, 0, sigma.size());
+        int zeroBits = 8 - fieldSize % 8;
+        for (int i=0; i<variables.size(); i++){
+//        cout << "key = " << keys[i] << " val = ";
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<(int)(vals[i*fieldSizeBytes + j])<<" " << std::bitset<8>(vals[i*fieldSizeBytes + j]) << " ";
+//        }
+//        cout<<endl;
 
+            sigma[(i+1)*fieldSizeBytes-1] = sigma[(i+1)*fieldSizeBytes-1]  >> zeroBits;
+//
+//        cout << "key = " << keys[i] << " val = ";
+//        for (int j=0; j<fieldSizeBytes; j++){
+//            cout<<(int)(vals[i*fieldSizeBytes + j])<<" " << std::bitset<8>(vals[i*fieldSizeBytes + j]) << " ";
+//        }
+//        cout<<endl;
+        }
         GF2X temp;
+//        vector<byte> temp1(fieldSizeBytes);
         for (int i=0; i < variables.size(); i++){
 
             GF2XFromBytes(temp, sigma.data() + i*fieldSizeBytes ,fieldSizeBytes);
             variables[i] = to_GF2E(temp);
+
+//            BytesFromGF2X(temp1.data(), rep(variables[i]), fieldSizeBytes);
+//
+//            for (int j=0; j<fieldSizeBytes; j++){
+//                if (temp1[j] != sigma[i*fieldSizeBytes + j])
+//                    cout<<"error!! sigma[i*fieldSizeBytes + j] = "<<(int)sigma[i*fieldSizeBytes + j]<<" temp1[j] = "<<(int)temp1[j]<<endl;
+//                //            for (int j=0; j<fieldSizeBytes; j++){
+//                //                cout<<(int)*(sigma.data() + i*fieldSizeBytes + j)<< " ";
+//                //            }
+//                //            cout<<endl;
+//            }
 //        auto tempval = to_GF2E(temp);
 //        cout<<"val in GF2E = "<<tempval<<endl;
 
@@ -137,7 +164,7 @@ cout<<"fieldSizeBytes = "<<fieldSizeBytes<<endl;
 
     virtual vector<byte> getVariables() {
 
-//        if (sigma.size() == 0) { //If the variables do not randomly chosen
+        if (sigma.size() == 0) { //If the variables do not randomly chosen
             sigma.resize(variables.size() * fieldSizeBytes);
             for (int i = 0; i < variables.size(); i++) {
                 //            cout<<"variables["<<i<<"] = "<<variables[i]<<endl;
@@ -148,24 +175,26 @@ cout<<"fieldSizeBytes = "<<fieldSizeBytes<<endl;
                 //            cout<<endl;
             }
 //        } else {
+//            cout<<"variables.size() = "<<variables.size()<<endl;
 //            vector< byte> temp(variables.size() * fieldSizeBytes);
 //            for (int i = 0; i < variables.size(); i++) {
-//                //            cout<<"variables["<<i<<"] = "<<variables[i]<<endl;
+//                            cout<<"variables["<<i<<"] = "<<variables[i]<<endl;
 //                BytesFromGF2X(temp.data() + i * fieldSizeBytes, rep(variables[i]), fieldSizeBytes);
-//                //            for (int j=0; j<fieldSizeBytes; j++){
-//                //                cout<<(int)*(sigma.data() + i*fieldSizeBytes + j)<< " ";
-//                //            }
-//                //            cout<<endl;
+//                            for (int j=0; j<fieldSizeBytes; j++){
+//                                cout<<(int)*(temp.data() + i*fieldSizeBytes + j)<< " ";
+//                            }
+//                            cout<<endl;
 //            }
 //            bool error = false;
 //            for (int i=0; i<sigma.size(); i++){
 //                if (sigma[i] != temp[i]){
 //                    error = true;
+////                    cout<<"sigma[i] = "<<(int)sigma[i]<<" temp[i] = "<<(int)temp[i]<<endl;
 //                }
 //            }
 //            if (error)
 //                cout<<"values have been changed!"<<endl;
-//        }
+        }
 
         return sigma;
     }
@@ -183,7 +212,7 @@ protected:
     int tableRealSize;
 
     uint64_t dhSeed;
-
+    double c1;
 
     vector<uint64_t> peelingVector;
     int peelingCounter;
@@ -196,7 +225,7 @@ protected:
 
 public:
 
-    OBDTables(int hashSize, int fieldSize, int gamma, int v) : ObliviousDictionary(hashSize, fieldSize, gamma, v){
+    OBDTables(int hashSize, double c1, int fieldSize, int gamma, int v) : ObliviousDictionary(hashSize, fieldSize, gamma, v), c1(c1){
         //the value is fixed for tests reasons
         dhSeed = 5;
         DH = Hasher(dhSeed);
@@ -232,7 +261,7 @@ private:
     unordered_set<uint64_t, Hasher> second;
 
 public:
-    OBD2Tables(int hashSize, int fieldSize, int gamma, int v);
+    OBD2Tables(int hashSize, double c1, int fieldSize, int gamma, int v);
 
     void createSets() override;
 
@@ -254,7 +283,7 @@ public:
 
     bool hasLoop() override;
 
-    int getTableSize() override {return 2*tableRealSize;}
+    int getTableSize() override {return 2*tableRealSize + gamma;}
 };
 
 class OBD3Tables : public OBDTables {
@@ -263,8 +292,6 @@ private:
     unordered_set<uint64_t, Hasher> first;
     unordered_set<uint64_t, Hasher> second;
     unordered_set<uint64_t, Hasher> third;
-
-    double c1;
 
 
     void handleQueue(queue<int> &queueMain, unordered_set<uint64_t, Hasher> &main,
@@ -295,7 +322,7 @@ public:
 
     bool hasLoop() override;
 
-    int getTableSize() override {return 3*tableRealSize;}
+    int getTableSize() override {return 3*tableRealSize + gamma;}
 
 
 };
@@ -312,6 +339,12 @@ private:
     int numItemsForBin;
     int center;
     int numThreads = 1;
+
+    void peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId);
+
+    void unpeelMultipleBinsThread(int start, int end, int failureIndex);
+
+    void setNewValsThread(int start, int end, int failureIndex);
 
 public:
 
@@ -330,15 +363,12 @@ public:
     bool checkOutput() override;
 
     int getTableSize() override {
-        return (q+1)*bins[0]->getTableSize();
+        return (q+1)*(bins[0]->getTableSize() + gamma);
     }
 
     vector<byte> getVariables() override;
+
     bool checkOutput(uint64_t key, int valIndex);
-
-    void peelMultipleBinsThread(int start, int end, vector<int> &failureIndices, int threadId);
-
-    void unpeelMultipleBinsThread(int start, int end, int failureIndex);
 };
 
 

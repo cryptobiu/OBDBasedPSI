@@ -558,6 +558,8 @@ void OBD3Tables::createSets(){
     double factorSize = c1/3;
 //    cout<<"factorSize = "<<factorSize<<endl;
 //    cout<<"items in set = "<<hashSize*factorSize<<endl;
+//    cout<<"items in 3 sets = "<<3*hashSize*factorSize<<endl;
+
 
     first = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(firstSeed));
     second = unordered_set<uint64_t, Hasher>(hashSize*factorSize, Hasher(secondSeed));
@@ -566,7 +568,7 @@ void OBD3Tables::createSets(){
 
     tableRealSize = first.bucket_count();
 
-//    cout<<"tableRealSize = "<<tableRealSize<<endl;
+//    cout<<"tableRealSize in each bin = "<<tableRealSize<<endl;
 
 //    while(tableRealSize*3/c1 < hashSize){
 //        first = unordered_set<uint64_t, Hasher>(tableRealSize + 1, Hasher(firstSeed));
@@ -772,8 +774,8 @@ int OBD3Tables::peeling() {
 //    duration = duration_cast<milliseconds>(end-start).count();
 //      cout << "time in milliseconds for peel queues: " << duration << endl;
 
-
-//        cout << "peelingCounter : " << peelingCounter << endl;
+    if (peelingCounter != hashSize)
+        cout << "2 core contain : " << hashSize - peelingCounter << endl;
 //        cout << "hashSize : " << hashSize << endl;
 
 

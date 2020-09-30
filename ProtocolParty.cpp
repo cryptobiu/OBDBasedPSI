@@ -82,7 +82,7 @@ cout<<"malicious = "<<isMalicious<<endl;
     } else if (version.compare("3Tables") == 0) {
         dic = new OBD3Tables(hashSize, c1, fieldSize, gamma, 20);
     } else if (version.compare("star") == 0) {
-        int numItemsForBin = c2*(hashSize/q);
+        double numItemsForBin = c2*(hashSize/q);
         gamma = 40 + 0.5*log(numItemsForBin);
         //dic = new StarDictionary(hashSize, 1.25, 1.04, 160, fieldSize, gamma, 0.5*log(hashSize), numThreads);
         dic = new StarDictionary(hashSize, c1, c2, q, fieldSize, gamma, 0.5*log(numItemsForBin), numThreads);

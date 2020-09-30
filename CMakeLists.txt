@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 project(OBDBasedPSI)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -msse4.2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fopenmp -msse4.2")
+
 INCLUDE_DIRECTORIES($ENV{HOME} $ENV{HOME}/PaXoS_PSI_New $ENV{HOME}/PaXoS_PSI_New/libPSI $ENV{HOME}/PaXoS_PSI_New/libOTe
         $ENV{HOME}/PaXoS_PSI_New/libOTe/cryptoTools
         $ENV{HOME}/libscapi/install/include xxHash)

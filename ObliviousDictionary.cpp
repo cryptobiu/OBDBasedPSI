@@ -102,8 +102,8 @@ OBD2Tables::OBD2Tables(int hashSize, int fieldSize, int gamma, int v) : OBDTable
 }
 
 void OBD2Tables::createSets(){
-    first = unordered_set<uint64_t, Hasher>(hashSize*1.2, Hasher(firstSeed));
-    second = unordered_set<uint64_t, Hasher>(hashSize*1.2, Hasher(secondSeed));
+    first = unordered_set<uint64_t, Hasher>(hashSize*1, Hasher(firstSeed));
+    second = unordered_set<uint64_t, Hasher>(hashSize*1, Hasher(secondSeed));
 
     tableRealSize = first.bucket_count();
     cout<<"tableRealSize = "<<tableRealSize<<endl;
@@ -1137,8 +1137,8 @@ void StarDictionary::setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values
     for (int i=0; i<q; i++){
         indexInInnerBin = numItemInBin[i];
         int numElementsToFill = numItemsForBin - indexInInnerBin;
-        prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
-        prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
+        //prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
+        //prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
 
         //set the keys and values of the bin
         //TODO no need to set values here

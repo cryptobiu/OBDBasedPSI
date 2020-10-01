@@ -58,6 +58,7 @@ protected:
     int gamma;
     bool isMalicious;
     string version;
+    int q;
 
     string addressForOT;
     int portForOT;
@@ -110,6 +111,8 @@ private :
     void receiveSenderXors();
 
     void preprocess(vector<vector<block>>& lookupTable, int smallTableStartIndex, int blockSize) override;
+    void computeTablesXors();
+    void computeStarXors();
 
 public:
 
@@ -130,6 +133,8 @@ private :
     void runOOS();
 
     void computeXors();
+    void computeTablesXors();
+    void computeStarXors();
 
     void sendXors();
 

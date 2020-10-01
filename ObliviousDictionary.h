@@ -97,6 +97,7 @@ public:
     virtual void init() = 0;
 
     virtual vector<uint64_t> dec(uint64_t key) = 0;
+    virtual vector<uint64_t> decOptimized(uint64_t key) = 0;
 
     virtual vector<byte> decode(uint64_t key) = 0;
 
@@ -239,8 +240,6 @@ public:
 
     void init() override;
 
-    virtual vector<uint64_t> decOptimized(uint64_t key) = 0;
-
     virtual void createSets() = 0;
 
     bool encode() override;
@@ -363,6 +362,8 @@ public:
 
     vector<uint64_t> dec(uint64_t key) override;
 
+    vector<uint64_t> decOptimized(uint64_t key) override;
+
     vector<byte> decode(uint64_t key);
 
     bool encode() override;
@@ -370,7 +371,7 @@ public:
     bool checkOutput() override;
 
     int getTableSize() override {
-        return (q+1)*(bins[0]->getTableSize() + gamma);
+        return (q+1)*(bins[0]->getTableSize());
     }
 
     vector<byte> getVariables() override;

@@ -57,6 +57,7 @@ protected:
     int reportStatistics = 0;
     int gamma;
     bool isMalicious;
+    string version;
 
     string addressForOT;
     int portForOT;
@@ -72,6 +73,7 @@ protected:
     shared_ptr<ProtocolPartyData> otherParty;
     boost::asio::io_service io_service;
 
+    virtual void preprocess(vector<vector<block>>& lookupTable, int smallTableStartIndex, int blockSize) = 0;
 public:
 
     ProtocolParty(int argc, char *argv[]);
@@ -106,6 +108,9 @@ private :
     void checkVariables(vector<byte> & variables);
 
     void receiveSenderXors();
+
+    void preprocess(vector<vector<block>>& lookupTable, int smallTableStartIndex, int blockSize) override;
+
 public:
 
     Receiver(int argc, char *argv[]);
@@ -127,6 +132,8 @@ private :
     void computeXors();
 
     void sendXors();
+
+    void preprocess(vector<vector<block>>& lookupTable, int smallTableStartIndex, int blockSize) override;
 public:
 
     Sender(int argc, char *argv[]);

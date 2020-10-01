@@ -37,6 +37,7 @@ protected:
     vector<byte> values;
 
     unordered_map<uint64_t, GF2E> vals;
+//    vector<vector<uint64_t>> indices;
 
     int reportStatistics=0;
     ofstream statisticsFile;
@@ -203,6 +204,7 @@ cout<<"fieldSizeBytes = "<<fieldSizeBytes<<endl;
 
     int getHashSize(){return hashSize;}
     virtual int getTableSize() = 0;
+    int getGamma() {return gamma; }
 
 };
 
@@ -237,6 +239,8 @@ public:
 
     void init() override;
 
+    virtual vector<uint64_t> decOptimized(uint64_t key) = 0;
+
     virtual void createSets() = 0;
 
     bool encode() override;
@@ -268,6 +272,7 @@ public:
     void init() override;
 
     vector<uint64_t> dec(uint64_t key) override;
+    vector<uint64_t> decOptimized(uint64_t key) override;
 
     vector<byte> decode(uint64_t key) override;
 
@@ -307,6 +312,8 @@ public:
     void init() override;
 
     vector<uint64_t> dec(uint64_t key) override;
+
+    vector<uint64_t> decOptimized(uint64_t key) override;
 
     vector<byte> decode(uint64_t key) override;
 

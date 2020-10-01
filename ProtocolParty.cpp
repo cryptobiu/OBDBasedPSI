@@ -38,7 +38,7 @@ ProtocolParty::ProtocolParty(int argc, char* argv[]) : Protocol("PSI", argc, arg
     isMalicious = stoi(this->getParser().getValueByKey(arguments, "malicious")) == 0 ? false : true;
 cout<<"malicious = "<<isMalicious<<endl;
 
-    auto version = this->getParser().getValueByKey(arguments, "version");
+    version = this->getParser().getValueByKey(arguments, "version");
 
     if(reportStatistics==0) {
         otherParty = comm.setCommunication(io_service, partyId, 2, partiesFile)[0];
@@ -420,27 +420,80 @@ void Receiver::computeXors(){
 
     xorsSet = unordered_set<uint64_t>(hashSize);
 
+    auto start = high_resolution_clock::now();
+    int smallTableSize = dic->getGamma();
+    int smallTableStartIndex = dic->getTableSize() - smallTableSize;
+    int numLookupTables = smallTableSize % 8 == 0 ? smallTableSize / 8 : smallTableSize / 8 + 1;
+
+    vector<vector<vector<block>>> lookupTable(numLookupTables);
+
+    if (version.compare("2Tables") == 0 || version.compare("3Tables") == 0) {
+        for (int i = 0; i < numLookupTables; i++) {
+            preprocess(lookupTable[i], smallTableStartIndex + i * 8, blockSize);
+        }
+    }
+    auto end = high_resolution_clock::now();
+    int preprocessDuration = duration_cast<milliseconds>(end - start).count();
+    cout<<"preprocess took = "<<preprocessDuration<<endl;
 //    cout<<"baseCount = "<<baseCount<<endl;
 //    cout<<"Xors:"<<endl;
+int duration = 0, indicesDuration = 0;
     for (int i=0; i<hashSize; i++){
 
-        auto indices = dic->dec(keys[i]);
+         start = high_resolution_clock::now();
+        vector<uint64_t> indices;
+         end = high_resolution_clock::now();
+        indicesDuration += duration_cast<nanoseconds>(end - start).count();
 //        for (int k=0; k<indices.size(); k++) {
 //            cout<<indices[k]<<" ";
 //        }
 //        cout<<endl;
 
+        if (version.compare("2Tables") == 0 || version.compare("3Tables") == 0) {
+            indices = ((OBDTables*)dic)->decOptimized(keys[i]);
+        } else {
+            indices = dic->dec(keys[i]);
+        }
+        end = high_resolution_clock::now();
+        indicesDuration += duration_cast<nanoseconds>(end - start).count();
 
         for (int j=0; j<blockSize; j++) {
             output[j] = _mm_xor_si128(*(recv.mT0.data(indices[0]) + j),*(recv.mT0.data(indices[1]) + j));
         }
 
-        for (int k=2; k<indices.size(); k++) {
-            for (int j = 0; j < blockSize; j++) {
-                output[j] = _mm_xor_si128(output[j], *(recv.mT0.data(indices[k]) + j));
+         start = high_resolution_clock::now();
+        if (version.compare("2Tables") == 0) {
+            start = high_resolution_clock::now();
+            for (int k = 0; k < numLookupTables; k++) {
+
+                for (int j = 0; j < blockSize; j++) {
+                    output[j] = _mm_xor_si128(output[j], lookupTable[k][indices[2+k]][j]);
+                }
+            }
+        } else if (version.compare("3Tables") == 0) {
+
+            for (int j=0; j<blockSize; j++) {
+                output[j] = _mm_xor_si128(output[j],*(recv.mT0.data(indices[2]) + j));
+            }
+            start = high_resolution_clock::now();
+            for (int k = 0; k < numLookupTables; k++) {
+
+                for (int j = 0; j < blockSize; j++) {
+                    output[j] = _mm_xor_si128(output[j], lookupTable[k][indices[3+k]][j]);
+                }
+            }
+        } else {
+            start = high_resolution_clock::now();
+            for (int k = 2; k < indices.size(); k++) {
+                for (int j = 0; j < blockSize; j++) {
+                    output[j] = _mm_xor_si128(output[j], *(recv.mT0.data(indices[k]) + j));
+                }
             }
         }
 
+         end = high_resolution_clock::now();
+
+        duration += duration_cast<nanoseconds>(end - start).count();
 
         EVP_EncryptUpdate(aes, temp.data(), &size, (byte*)output.data(), blockSize*16);
 //cout<<"size = "<<size<<endl;
@@ -454,6 +507,32 @@ void Receiver::computeXors(){
 
     }
 
+    cout<<"get indices took = "<<indicesDuration<<endl;
+    cout<<"xors little table took = "<<duration<<endl;
+
+
+}
+
+void Receiver::preprocess(vector<vector<block>> & lookupTable, int smallTableStartIndex, int blockSize){
+
+    lookupTable.resize(256);
+    uint64_t mask = 1;
+    block zero = _mm_setzero_si128();
+
+    for (int k=0; k<lookupTable.size(); k++) {
+        lookupTable[k] = vector<block>(blockSize, zero);
+        int index = k;
+
+        for (int i=0; i<8; i++) {
+
+            if ((index & mask) == 1) {
+                for (int j = 0; j < blockSize; j++) {
+                    lookupTable[k][j] = _mm_xor_si128(lookupTable[k][j], *(recv.mT0.data(smallTableStartIndex + i) + j));
+                }
+            }
+            index = index >> 1;
+        }
+    }
 
 }
 
@@ -661,6 +740,21 @@ void Sender::computeXors(){
 //cout <<"before resize" << endl;
     xors.resize(hashSize);
     //cout << "after resize" << endl;
+    auto start = high_resolution_clock::now();
+    int smallTableSize = dic->getGamma();
+    int smallTableStartIndex = dic->getTableSize() - smallTableSize;
+    int numLookupTables = smallTableSize % 8 == 0 ? smallTableSize / 8 : smallTableSize / 8 + 1;
+
+    vector<vector<vector<block>>> lookupTable(numLookupTables);
+
+    if (version.compare("2Tables") == 0 || version.compare("3Tables") == 0) {
+        for (int i = 0; i < numLookupTables; i++) {
+            preprocess(lookupTable[i], smallTableStartIndex + i * 8, blockSize);
+        }
+    }
+    auto end = high_resolution_clock::now();
+    int preprocessDuration = duration_cast<milliseconds>(end - start).count();
+    cout<<"preprocess took = "<<preprocessDuration<<endl;
 
     vector<byte> temp(blockSize*16);
   //  cout << "created temp" <<endl;
@@ -668,7 +762,13 @@ void Sender::computeXors(){
 //    cout<<"indices = "<<endl;
     for (int i=0; i<hashSize; i++){
 
-        auto indices = dic->dec(keys[i]);
+        vector<uint64_t> indices;
+
+        if (version.compare("2Tables") == 0 || version.compare("3Tables") == 0) {
+            indices = ((OBDTables*)dic)->decOptimized(keys[i]);
+        } else {
+            indices = dic->dec(keys[i]);
+        }
 
 //        for (int k=0; k<indices.size(); k++) {
 //            cout<<indices[k]<<" ";
@@ -679,9 +779,32 @@ void Sender::computeXors(){
             output[j] = _mm_xor_si128(*(sender.mT.data(indices[0]) + j),*(sender.mT.data(indices[1]) + j));
         }
 
-        for (int k=2; k<indices.size(); k++) {
-            for (int j = 0; j < blockSize; j++) {
-                output[j] = _mm_xor_si128(output[j], *(sender.mT.data(indices[k]) + j));
+        if (version.compare("2Tables") == 0) {
+            start = high_resolution_clock::now();
+            for (int k = 0; k < numLookupTables; k++) {
+
+                for (int j = 0; j < blockSize; j++) {
+                    output[j] = _mm_xor_si128(output[j], lookupTable[k][indices[2+k]][j]);
+                }
+            }
+        } else if (version.compare("3Tables") == 0) {
+
+            for (int j=0; j<blockSize; j++) {
+                output[j] = _mm_xor_si128(output[j],*(sender.mT.data(indices[2]) + j));
+            }
+            start = high_resolution_clock::now();
+            for (int k = 0; k < numLookupTables; k++) {
+
+                for (int j = 0; j < blockSize; j++) {
+                    output[j] = _mm_xor_si128(output[j], lookupTable[k][indices[3+k]][j]);
+                }
+            }
+        } else {
+            start = high_resolution_clock::now();
+            for (int k = 2; k < indices.size(); k++) {
+                for (int j = 0; j < blockSize; j++) {
+                    output[j] = _mm_xor_si128(output[j], *(sender.mT.data(indices[k]) + j));
+                }
             }
         }
 
@@ -710,6 +833,29 @@ void Sender::computeXors(){
 //        cout<<xors[i]<<endl;
     }
 
+
+}
+
+void Sender::preprocess(vector<vector<block>> & lookupTable, int smallTableStartIndex, int blockSize){
+
+    lookupTable.resize(256);
+    uint64_t mask = 1;
+    block zero = _mm_setzero_si128();
+
+    for (int k=0; k<lookupTable.size(); k++) {
+        lookupTable[k] = vector<block>(blockSize, zero);
+        int index = k;
+
+        for (int i=0; i<8; i++) {
+
+            if ((index & mask) == 1) {
+                for (int j = 0; j < blockSize; j++) {
+                    lookupTable[k][j] = _mm_xor_si128(lookupTable[k][j], *(sender.mT.data(smallTableStartIndex + i) + j));
+                }
+            }
+            index = index >> 1;
+        }
+    }
 
 }
 

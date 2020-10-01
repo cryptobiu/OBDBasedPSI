@@ -13,7 +13,7 @@ ObliviousDictionary::ObliviousDictionary(int hashSize, int fieldSize, int gamma,
     prg.setKey(key);
 
 
-
+//indices.resize(hashSize);
 
 //    firstEncValues.resize(tableRealSize, 0);
 //    secondEncValues.resize(tableRealSize, 0);
@@ -128,21 +128,46 @@ void OBD2Tables::init() {
 }
 
 vector<uint64_t> OBD2Tables::dec(uint64_t key){
+//    auto keyIndices = indices[key];
+//    if(keyIndices.size() == 0) {
+//        cout<<"first time"<<endl;
+vector<uint64_t> keyIndices;
+        keyIndices.push_back(first.bucket(key));
+        keyIndices.push_back(tableRealSize + second.bucket(key));
 
-    vector<uint64_t> indices;
-    indices.push_back(first.bucket(key));
-    indices.push_back(tableRealSize + second.bucket(key));
-
-    auto dhBits = getDHBits(key);
-    uint64_t mask = 1;
-    for (int j=0; j<gamma; j++){
-        if ((dhBits & mask) == 1){
-            indices.push_back(2*tableRealSize + j); //put 1 in the right vertex of the edge
+        auto dhBits = getDHBits(key);
+        uint64_t mask = 1;
+        for (int j = 0; j < gamma; j++) {
+            if ((dhBits & mask) == 1) {
+                keyIndices.push_back(2 * tableRealSize + j); //put 1 in the right vertex of the edge
+            }
+            dhBits = dhBits >> 1;
         }
-        dhBits = dhBits >> 1;
-    }
+//        indices[key] = move(keyIndices);
 
-    return indices;
+//    }
+
+    return keyIndices;
+}
+
+vector<uint64_t> OBD2Tables::decOptimized(uint64_t key){
+//    auto keyIndices = indices[key];
+//    if(keyIndices.size() == 0) {
+//        cout<<"first time"<<endl;
+vector<uint64_t> keyIndices;
+        keyIndices.push_back(first.bucket(key));
+        keyIndices.push_back(tableRealSize + second.bucket(key));
+
+        auto dhBits = getDHBits(key);
+        byte* dhBytes = (byte*) (&dhBits);
+        for (int j = 0; j < 8; j++) {
+            keyIndices.push_back(dhBytes[j]); //put 1 in the right vertex of the edge
+        }
+//        indices[key] = move(keyIndices);
+
+//    }
+
+    return keyIndices;
 }
 
 vector<byte> OBD2Tables::decode(uint64_t key){
@@ -598,21 +623,46 @@ void OBD3Tables::init() {
 
 vector<uint64_t> OBD3Tables::dec(uint64_t key){
 
-    vector<uint64_t> indices;
-    indices.push_back(first.bucket(key));
-    indices.push_back(tableRealSize + second.bucket(key));
-    indices.push_back(2*tableRealSize + third.bucket(key));
+//    auto keyIndices = indices[key];
+//    if(keyIndices.size() == 0) {
+    vector<uint64_t> keyIndices;
+        keyIndices.push_back(first.bucket(key));
+        keyIndices.push_back(tableRealSize + second.bucket(key));
+        keyIndices.push_back(2 * tableRealSize + third.bucket(key));
+
+        auto dhBits = getDHBits(key);
+        uint64_t mask = 1;
+        for (int j = 0; j < gamma; j++) {
+            if ((dhBits & mask) == 1) {
+                keyIndices.push_back(3 * tableRealSize + j); //put 1 in the right vertex of the edge
+            }
+            dhBits = dhBits >> 1;
+        }
+//        indices[key] = move(keyIndices);
+//    }
+
+    return keyIndices;
+}
+
+vector<uint64_t> OBD3Tables::decOptimized(uint64_t key){
+//    auto keyIndices = indices[key];
+//    if(keyIndices.size() == 0) {
+//        cout<<"first time"<<endl;
+    vector<uint64_t> keyIndices;
+    keyIndices.push_back(first.bucket(key));
+    keyIndices.push_back(tableRealSize + second.bucket(key));
+    keyIndices.push_back(2 * tableRealSize + third.bucket(key));
 
     auto dhBits = getDHBits(key);
-    uint64_t mask = 1;
-    for (int j=0; j<gamma; j++){
-        if ((dhBits & mask) == 1){
-            indices.push_back(3*tableRealSize + j); //put 1 in the right vertex of the edge
-        }
-        dhBits = dhBits >> 1;
+    byte* dhBytes = (byte*) (&dhBits);
+    for (int j = 0; j < 8; j++) {
+        keyIndices.push_back(dhBytes[j]); //put 1 in the right vertex of the edge
     }
+//        indices[key] = move(keyIndices);
 
-    return indices;
+//    }
+
+    return keyIndices;
 }
 
 vector<byte> OBD3Tables::decode(uint64_t key){
@@ -1161,33 +1211,37 @@ void StarDictionary::init() {
 
 vector<uint64_t> StarDictionary::dec(uint64_t key){
 
-    int binIndex = hashForBins(key) % q;
-    int innerIndicesSize = bins[0]->getTableSize();
-//    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
-//    cout<<"gamma = "<<gamma<<endl;
-//    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
-    auto indices = bins[binIndex]->dec(key);
+//    auto keyIndices = indices[key];
+//    if (keyIndices.size() == 0) {
+        int binIndex = hashForBins(key) % q;
+        int innerIndicesSize = bins[0]->getTableSize();
+        //    cout<<"bins[0]->getTableSize() = "<<bins[0]->getTableSize()<<endl;
+        //    cout<<"gamma = "<<gamma<<endl;
+        //    cout<<"innerSize in dec = "<<innerIndicesSize<<endl;
+        auto binIndices = bins[binIndex]->dec(key);
 
-//    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
+        //    cout<<"binIndex =  "<<binIndex<<" numItemsForBin = "<<numItemsForBin<<endl;
 
 
-    auto centerIndices = bins[center]->dec(key);
-//    indices.insert(indices.end(), centerIndices.begin(), centerIndices.end());
+        auto centerIndices = bins[center]->dec(key);
 
-    vector<uint64_t> newIndices(indices.size() + centerIndices.size()); //Will hold the indices of the big array
+        vector<uint64_t> keyIndices(binIndices.size() + centerIndices.size()); //Will hold the indices of the big array
 
-    int startIndex = binIndex*innerIndicesSize;
-    for (int i=0; i<indices.size(); i++){
-        newIndices[i] = startIndex + indices[i];
-//        cout<<"index = "<<indices[i]<<" newIndex = "<<newIndices[i]<<endl;
-    }
+        int startIndex = binIndex * innerIndicesSize;
+        for (int i = 0; i < binIndices.size(); i++) {
+            keyIndices[i] = startIndex + binIndices[i];
 
-    startIndex = center*innerIndicesSize;
-    for (int i=0; i<centerIndices.size(); i++){
-        newIndices[indices.size() + i] = startIndex + centerIndices[i];
-//        cout<<"center index = "<<centerIndices[i]<<" newIndex = "<<newIndices[indices.size() + i]<<endl;
-    }
-    return newIndices;
+        }
+
+        startIndex = center * innerIndicesSize;
+        for (int i = 0; i < centerIndices.size(); i++) {
+            keyIndices[binIndices.size() + i] = startIndex + centerIndices[i];
+
+        }
+
+//        indices[key] = move(keyIndices);
+//    }
+    return keyIndices;
 }
 
 vector<byte> StarDictionary::decode(uint64_t key){
@@ -1289,7 +1343,7 @@ bool StarDictionary::encode() {
     cout << "time in milliseconds for generate center values: " << duration << endl;
 
     start = high_resolution_clock::now();
-    vector<byte> centerValues = bins[center]->getVariables();
+//    vector<byte> centerValues = bins[center]->getVariables();
 
 
     for (int t=0; t<numThreads; t++) {

@@ -75,6 +75,9 @@ protected:
     boost::asio::io_service io_service;
 
     virtual void preprocess(vector<vector<block>>& lookupTable, int smallTableStartIndex, int blockSize) = 0;
+
+	void densemxbin();
+
 public:
 
     ProtocolParty(int argc, char *argv[]);

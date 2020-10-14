@@ -56,7 +56,7 @@ bool OBDTables::encode(){
     cout << "fillTables took in milliseconds: " << duration << endl;
 
     t1 = high_resolution_clock::now();
-    peeling();
+    auto res = peeling();
 
     t2 = high_resolution_clock::now();
 
@@ -82,6 +82,7 @@ bool OBDTables::encode(){
 
     duration = duration_cast<milliseconds>(end - start).count();
     cout << "encode took in milliseconds: " << duration << endl;
+    return res;
 };
 
 OBD2Tables::OBD2Tables(int hashSize, double c1, int fieldSize, int gamma, int v) : OBDTables(hashSize, c1, fieldSize, gamma, v){

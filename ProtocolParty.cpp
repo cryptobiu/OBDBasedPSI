@@ -294,7 +294,7 @@ void Receiver::runOOS(vector<byte> & sigma){
 
     LinearCode code;
     switch(fieldSize){
-        case 64:
+        case 65:
             code.load(mx65by448, sizeof(mx65by448));
             cout<<"load mx65by448"<<endl;
             break;
@@ -748,7 +748,7 @@ void Sender::runOOS(){
     auto sendChl = ep0.addChannel(name, name);
 
     switch(fieldSize){
-        case 64:
+        case 65:
             code.load(mx65by448, sizeof(mx65by448));
             cout<<"load mx65by448"<<endl;
             break;
@@ -769,6 +769,60 @@ void Sender::runOOS(){
             cout<<"load mx132by583"<<endl;
             break;
 
+        case 138:
+            code.load(mx138by594, sizeof(mx138by594));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 144:
+            code.load(mx144by605, sizeof(mx144by605));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 150:
+            code.load(mx150by616, sizeof(mx150by616));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 156:
+            code.load(mx156by627, sizeof(mx156by627));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 162:
+            code.load(mx162by638, sizeof(mx162by638));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 168:
+            code.load(mx168by649, sizeof(mx168by649));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 174:
+            code.load(mx174by660, sizeof(mx174by660));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 210:
+            code.load(mx210by732, sizeof(mx210by732));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 217:
+            code.load(mx217by744, sizeof(mx217by744));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 231:
+            code.load(mx231by768, sizeof(mx231by768));
+            cout<<"load mx132by583"<<endl;
+            break;
+
+        case 238:
+            code.load(mx238by776, sizeof(mx238by776));
+            cout<<"load mx132by583"<<endl;
+            break;
 
     }
 
@@ -1002,6 +1056,7 @@ void Sender::computeStarXors(){
 
         std::array<block, 10> codeword = { ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock };
         memcpy(codeword.data(), vals.data() + i*fieldSizeBytes, fieldSizeBytes);
+//        std::array<block, 10> tempcodeword = { ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock, ZeroBlock };
         code.encode((u8*)codeword.data(), (u8*)codeword.data());
 
         for (int j = 0; j < blockSize; j++) {

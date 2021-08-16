@@ -2,6 +2,8 @@
 // Created by moriya on 7/17/19.
 //
 
+#include <cstring>
+#include <thread>
 #include "ObliviousDictionary.h"
 
 ObliviousDictionary::ObliviousDictionary(int hashSize, int fieldSize, int gamma, int v) : hashSize(hashSize), fieldSize(fieldSize), gamma(gamma), v(v){
@@ -9,8 +11,8 @@ ObliviousDictionary::ObliviousDictionary(int hashSize, int fieldSize, int gamma,
     initField(fieldSize);
     fieldSizeBytes = fieldSize % 8 == 0 ? fieldSize/8 : fieldSize/8 + 1;
 
-    auto key = prg.generateKey(128);
-    prg.setKey(key);
+//    auto key = prg.generateKey(128);
+//    prg.setKey(key);
 
 
 //indices.resize(hashSize);
@@ -483,7 +485,8 @@ void OBD2Tables::unpeeling(){
 //        Poly::evalMersenne((ZpMersenneLongElement*)&poliVal, polynomial, (ZpMersenneLongElement*)&key);
 //        poliVal = polyVals[peelingCounter];
         if (variables[indices[0]] == 0 && variables[indices[1]] == 0 && sign[indices[0]] == 0 && sign[indices[1]] == 0){
-            randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+//            randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+            randomVal = nullptr;
             GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
             variables[indices[0]] = to_GF2E(temp);
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
@@ -1058,13 +1061,15 @@ void OBD3Tables::unpeeling(){
         if (variables[indices[0]] == 0 && sign[indices[0]] == 0){
 
             if (variables[indices[1]] == 0 && sign[indices[1]] == 0){
-                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+//                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+                randomVal = 0;
                 GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
                 variables[indices[1]] = to_GF2E(temp);
             }
 
             if (variables[indices[2]] == 0 && sign[indices[2]] == 0) {
-                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+//                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+                randomVal = 0;
                 GF2XFromBytes(temp, randomVal, fieldSizeBytes);
                 variables[indices[2]] = to_GF2E(temp);
             }
@@ -1075,7 +1080,8 @@ void OBD3Tables::unpeeling(){
         } else if (variables[indices[1]] == 0 && sign[indices[1]] == 0){
 
             if (variables[indices[2]] == 0 && sign[indices[2]] == 0) {
-                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+//                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
+                randomVal = 0;
                 GF2XFromBytes(temp, randomVal, fieldSizeBytes);
                 variables[indices[2]] = to_GF2E(temp);
             }
@@ -1192,8 +1198,8 @@ void StarDictionary::setKeysAndVals(vector<uint64_t>& keys, vector<byte>& values
     for (int i=0; i<q; i++){
         indexInInnerBin = numItemInBin[i];
         int numElementsToFill = numItemsForBin - indexInInnerBin;
-        prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
-        prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
+//        prg.getPRGBytes((byte*)(keysForBins[i].data() + indexInInnerBin), numElementsToFill*sizeof (uint64_t));
+//        prg.getPRGBytes((byte*)(valsForBins[i].data() + indexInInnerBin*fieldSizeBytes), numElementsToFill*fieldSizeBytes);
 
         //set the keys and values of the bin
         //TODO no need to set values here

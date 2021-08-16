@@ -1,6 +1,6 @@
-#include <iostream>
+//#include <iostream>
 
-#include "ProtocolParty.h"
+//#include "ProtocolParty.h"
 #include <chrono>
 
 int main(int argc, char* argv[]) {
@@ -118,15 +118,16 @@ int main(int argc, char* argv[]) {
 //    cout<<"x = "<<x[0]<<" "<<x[1]<<endl;
 
 //
-    CmdParser parser;
-    auto parameters = parser.parseArguments("", argc, argv);
-    int partyID = stoi(parser.getValueByKey(parameters, "partyID"));
-
-    if (partyID == 0) {
-        Receiver receiver(argc, argv);
-        receiver.run();
-    } else {
-        Sender sender(argc, argv);
-        sender.run();
-    }
+//    CmdParser parser;
+//    auto parameters = parser.parseArguments("", argc, argv);
+//    int partyID = stoi(parser.getValueByKey(parameters, "partyID"));
+//
+//    if (partyID == 0) {
+//        Receiver receiver(argc, argv);
+//        receiver.run();
+//    } else {
+//        Sender sender(argc, argv);
+//        sender.run();
+//    }
+return 0;
 }

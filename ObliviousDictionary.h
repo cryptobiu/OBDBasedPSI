@@ -7,17 +7,20 @@
 
 #include <unordered_set>
 #include <unordered_map>
-#include <libscapi/include/primitives/Prg.hpp>
-#include <libscapi/include/comm/MPCCommunication.hpp>
+//#include <libscapi/include/primitives/Prg.hpp>
+//#include <libscapi/include/comm/MPCCommunication.hpp>
 #include "Hasher.h"
 #include <NTL/mat_GF2E.h>
 #include <NTL/GF2E.h>
 #include <NTL/GF2X.h>
 #include <NTL/GF2XFactoring.h>
 #include "gf2e_mat_solve.h"
+//#include "thirdparty/linux/ntl/include/NTL/GF2E.h"
 
 #include <chrono>
 #include <queue>
+#include <fstream>
+typedef unsigned char byte;
 
 using namespace std::chrono;
 
@@ -32,7 +35,7 @@ protected:
     int fieldSize, fieldSizeBytes;
     int gamma, v;
 
-    PrgFromOpenSSLAES prg;
+//    PrgFromOpenSSLAES prg;
     vector<uint64_t> keys;
     vector<byte> values;
 
@@ -108,7 +111,8 @@ cout<<"variables.size() = "<<variables.size()<<endl;
 cout<<"fieldSizeBytes = "<<fieldSizeBytes<<endl;
 
         sigma.resize(variables.size()*fieldSizeBytes);
-        prg.getPRGBytes(sigma, 0, sigma.size());
+//        sigma.insert(0);
+//        prg.getPRGBytes(sigma, 0, sigma.size());
         int zeroBits = 8 - fieldSize % 8;
         for (int i=0; i<variables.size(); i++){
 //        cout << "key = " << keys[i] << " val = ";
@@ -233,9 +237,9 @@ public:
         dhSeed = 5;
         DH = Hasher(dhSeed);
 
-        prg = PrgFromOpenSSLAES(hashSize*fieldSizeBytes*4);
-        auto key = prg.generateKey(128);
-        prg.setKey(key);
+//        prg = PrgFromOpenSSLAES(hashSize*fieldSizeBytes*4);
+//        auto key = prg.generateKey(128);
+//        prg.setKey(key);
     }
 
     void init() override;

@@ -1,5 +1,11 @@
+wget http://www.shoup.net/ntl/ntl-9.3.0.tar.gz
+tar -zxvf ntl-9.3.0.tar.gz 
+mv ntl-9.3.0 ntl
+rm ntl-9.3.0.tar.gz
+
+
 cd ntl/src
-make clean
-make ./ntl.a 
+./configure
+make
 
 mv ./ntl.a ./libntl.a

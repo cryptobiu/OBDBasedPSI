@@ -14,16 +14,16 @@ target_link_directories(OBDBasedPSI
 )
 
 TARGET_LINK_LIBRARIES(OBDBasedPSI
-	ntl
-	xxhash
-	linbox
+		ntl
+		xxhash
+		linbox
 		iml
-        boost_system
-        pthread
-        crypto
-        dl
-        blas
-        givaro
-        gmp
-        gomp
+		boost_system
+		pthread
+		crypto
+		dl
+		blas
+		givaro
+		gmp
+		gomp
 )

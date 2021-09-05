@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <chrono>
+#include <cmath>
 #include "NTL/GF2XFactoring.h"
 #include "NTL/mat_GF2E.h"
 
@@ -10,30 +11,46 @@
 typedef unsigned char byte;
 
 int main(int argc, char* argv[]) {
-    int hashSize=4, fieldSize=1024, v=20, gamma = 2;
-    double c1 = 0.3;
+    int hashSize=pow(2, 10), fieldSize=65, gamma = 60, v=20;
+    double c1 = 2.4;
     vector<uint64_t> keys;
     vector<byte> values;
     keys.resize(hashSize);
     int fieldSizeBytes = fieldSize % 8 == 0 ? fieldSize/8 : fieldSize/8 + 1;
+    int zeroBits = 8 - fieldSize % 8;
     values.resize(hashSize*fieldSizeBytes);
+        for (int i=0; i<hashSize; i++){
+
+            values[(i+1)*fieldSizeBytes-1] = values[(i+1)*fieldSizeBytes-1]  >> zeroBits;
+
+    }
 
     for (int i=0; i < hashSize; i++){
         keys[i] = i;//prg.getRandom64();
     }
-    for (int j=0; j < fieldSizeBytes; j++){
+    for (int j=0; j < hashSize*fieldSizeBytes; j++){
         char x = 'a';
-        std::cout << x << ' ';
-        values[j] = x;//prg.getRandom64();
+        std::cout << x+j << ' ';
+        values[j] = x+j;//prg.getRandom64();
+    }
+
+    for (int i=0; i<9; i++) {
+//        vector<byte> bytes = dic->decode(keys[i]);
+            std::cout << "j is: " << int(values[i]) << ' ';
     }
 
     ObliviousDictionary* dic = new OBD2Tables(hashSize, c1, fieldSize, gamma, v);
+    dic->init();
     dic->setKeysAndVals(keys, values);
+    dic->encode();
 
-    for (int i=0; i<hashSize; i++) {
-        vector<uint64_t> indices = dic->decOptimized(keys[i]);
-        for (auto j: indices)
-            std::cout << j << ' ';
+    std::cout << "Starting decode" << ' ';
+
+    for (int i=0; i<1; i++) {
+        vector<byte> bytes = dic->decode(keys[i]);
+        for (byte j: bytes) {
+            std::cout << "j is: " << int(j) << ' ';
+        }
     }
 
 //    int fieldSize = 17;

@@ -134,18 +134,18 @@ vector<uint64_t> OBD2Tables::dec(uint64_t key){
 //    auto keyIndices = indices[key];
 //    if(keyIndices.size() == 0) {
 //        cout<<"first time"<<endl;
-vector<uint64_t> keyIndices;
-        keyIndices.push_back(first.bucket(key));
-        keyIndices.push_back(tableRealSize + second.bucket(key));
+    vector<uint64_t> keyIndices;
+    keyIndices.push_back(first.bucket(key));
+    keyIndices.push_back(tableRealSize + second.bucket(key));
 
-        auto dhBits = getDHBits(key);
-        uint64_t mask = 1;
-        for (int j = 0; j < gamma; j++) {
-            if ((dhBits & mask) == 1) {
-                keyIndices.push_back(2 * tableRealSize + j); //put 1 in the right vertex of the edge
-            }
-            dhBits = dhBits >> 1;
+    auto dhBits = getDHBits(key);
+    uint64_t mask = 1;
+    for (int j = 0; j < gamma; j++) {
+        if ((dhBits & mask) == 1) {
+            keyIndices.push_back(2 * tableRealSize + j); //put 1 in the right vertex of the edge
         }
+        dhBits = dhBits >> 1;
+    }
 //        indices[key] = move(keyIndices);
 
 //    }
@@ -157,15 +157,15 @@ vector<uint64_t> OBD2Tables::decOptimized(uint64_t key){
 //    auto keyIndices = indices[key];
 //    if(keyIndices.size() == 0) {
 //        cout<<"first time"<<endl;
-vector<uint64_t> keyIndices(10);
-        keyIndices[0] = first.bucket(key);
-        keyIndices[1] = tableRealSize + second.bucket(key);
+    vector<uint64_t> keyIndices(10);
+    keyIndices[0] = first.bucket(key);
+    keyIndices[1] = tableRealSize + second.bucket(key);
 
-        auto dhBits = getDHBits(key);
-        byte* dhBytes = (byte*) (&dhBits);
-        for (int j = 0; j < 8; j++) {
-            keyIndices[2 + j] = dhBytes[j]; //put 1 in the right vertex of the edge
-        }
+    auto dhBits = getDHBits(key);
+    byte* dhBytes = (byte*) (&dhBits);
+    for (int j = 0; j < 8; j++) {
+        keyIndices[2 + j] = dhBytes[j]; //put 1 in the right vertex of the edge
+    }
 //        indices[key] = move(keyIndices);
 
 //    }
@@ -485,9 +485,12 @@ void OBD2Tables::unpeeling(){
 //        Poly::evalMersenne((ZpMersenneLongElement*)&poliVal, polynomial, (ZpMersenneLongElement*)&key);
 //        poliVal = polyVals[peelingCounter];
         if (variables[indices[0]] == 0 && variables[indices[1]] == 0 && sign[indices[0]] == 0 && sign[indices[1]] == 0){
+            vector<byte> r;
+            r.resize(fieldSizeBytes);
 //            randomVal = prg.getPRGBytesEX(fieldSizeBytes);
-            randomVal = nullptr;
-            GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
+//            randomVal = nullptr;
+//const unsigned char *p
+            GF2XFromBytes(temp, (unsigned char *)&r, fieldSizeBytes);
             variables[indices[0]] = to_GF2E(temp);
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
         }
@@ -507,7 +510,7 @@ void OBD2Tables::unpeeling(){
 //            cout<<"val = "<<vals[key]<<endl;
         }
     }
-//    cout<<"peelingCounter = "<<peelingCounter<<endl;
+    cout<<"peelingCounter = "<<peelingCounter<<endl;
 
 //    cout<<"variables:"<<endl;
 //    for (int i=0; i<variables.size(); i++){
@@ -630,18 +633,18 @@ vector<uint64_t> OBD3Tables::dec(uint64_t key){
 //    auto keyIndices = indices[key];
 //    if(keyIndices.size() == 0) {
     vector<uint64_t> keyIndices;
-        keyIndices.push_back(first.bucket(key));
-        keyIndices.push_back(tableRealSize + second.bucket(key));
-        keyIndices.push_back(2 * tableRealSize + third.bucket(key));
+    keyIndices.push_back(first.bucket(key));
+    keyIndices.push_back(tableRealSize + second.bucket(key));
+    keyIndices.push_back(2 * tableRealSize + third.bucket(key));
 
-        auto dhBits = getDHBits(key);
-        uint64_t mask = 1;
-        for (int j = 0; j < gamma; j++) {
-            if ((dhBits & mask) == 1) {
-                keyIndices.push_back(3 * tableRealSize + j); //put 1 in the right vertex of the edge
-            }
-            dhBits = dhBits >> 1;
+    auto dhBits = getDHBits(key);
+    uint64_t mask = 1;
+    for (int j = 0; j < gamma; j++) {
+        if ((dhBits & mask) == 1) {
+            keyIndices.push_back(3 * tableRealSize + j); //put 1 in the right vertex of the edge
         }
+        dhBits = dhBits >> 1;
+    }
 //        indices[key] = move(keyIndices);
 //    }
 

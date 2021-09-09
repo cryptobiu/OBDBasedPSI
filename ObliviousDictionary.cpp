@@ -489,7 +489,6 @@ void OBD2Tables::unpeeling(){
             r.resize(fieldSizeBytes);
 //            randomVal = prg.getPRGBytesEX(fieldSizeBytes);
 //            randomVal = nullptr;
-//const unsigned char *p
             GF2XFromBytes(temp, (unsigned char *)&r, fieldSizeBytes);
             variables[indices[0]] = to_GF2E(temp);
 //                cout<<"set RANDOM value "<<variables[indices[0]]<<" in index "<<indices[0]<<endl;
@@ -1065,15 +1064,19 @@ void OBD3Tables::unpeeling(){
 
             if (variables[indices[1]] == 0 && sign[indices[1]] == 0){
 //                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
-                randomVal = 0;
-                GF2XFromBytes(temp, randomVal ,fieldSizeBytes);
+//                randomVal = 0;
+                vector<byte> r;
+                r.resize(fieldSizeBytes);
+                GF2XFromBytes(temp, (unsigned char *)&r ,fieldSizeBytes);
                 variables[indices[1]] = to_GF2E(temp);
             }
 
             if (variables[indices[2]] == 0 && sign[indices[2]] == 0) {
 //                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
-                randomVal = 0;
-                GF2XFromBytes(temp, randomVal, fieldSizeBytes);
+//                randomVal = 0;
+                vector<byte> r;
+                r.resize(fieldSizeBytes);
+                GF2XFromBytes(temp, (unsigned char *)&r, fieldSizeBytes);
                 variables[indices[2]] = to_GF2E(temp);
             }
 
@@ -1084,8 +1087,10 @@ void OBD3Tables::unpeeling(){
 
             if (variables[indices[2]] == 0 && sign[indices[2]] == 0) {
 //                randomVal = prg.getPRGBytesEX(fieldSizeBytes);
-                randomVal = 0;
-                GF2XFromBytes(temp, randomVal, fieldSizeBytes);
+//                randomVal = 0;
+                vector<byte> r;
+                r.resize(fieldSizeBytes);
+                GF2XFromBytes(temp, (unsigned char *)&r, fieldSizeBytes);
                 variables[indices[2]] = to_GF2E(temp);
             }
 
